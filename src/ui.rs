@@ -48,74 +48,169 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     }
 }
 
-fn draw_header(f: &mut Frame, app: &App, area: Rect) {
+fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {
+    app.header_area = area;
     let header_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(40), Constraint::Length(60)])
+        .constraints([Constraint::Min(32), Constraint::Length(45), Constraint::Length(46)])
         .split(area);
 
     let mut left_spans = vec![
         Span::styled(" ● ", Style::default().fg(Color::Rgb(34, 197, 94))),
         Span::styled("TIDE", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Span::raw("   "),
+        Span::raw(" "),
         Span::styled("📁 ", Style::default().fg(Color::Rgb(56, 189, 248))),
         Span::styled(&app.workspace_name, Style::default().fg(Color::White)),
-        Span::raw("   "),
+        Span::raw(" "),
         Span::styled(" ", Style::default().fg(Color::Rgb(168, 85, 247))),
         Span::styled(&app.git_info.branch, Style::default().fg(Color::Rgb(168, 85, 247))),
     ];
 
     if let Some((msg, time)) = &app.status_message {
         if time.elapsed().as_secs() < 12 {
-            left_spans.push(Span::raw("   │ "));
+            left_spans.push(Span::raw(" │ "));
             left_spans.push(Span::styled(format!("🔔 {}", msg), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)));
         }
     }
 
+    let toggle_btn = |label: &str, active: bool| {
+        if active {
+            Span::styled(format!(" [{}] ", label), Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD))
+        } else {
+            Span::styled(format!(" [{}] ", label), Style::default().fg(Color::Rgb(100, 116, 139)))
+        }
+    };
+
+    let mid_spans = vec![
+        toggle_btn("F2 Exp", app.show_explorer),
+        toggle_btn("F5 Prev", app.show_preview),
+        toggle_btn("F3 Git", app.show_git),
+        toggle_btn("F4 Agt", app.show_agents),
+        toggle_btn("F11 Max", app.is_maximized),
+    ];
+
     let right_spans = vec![
         Span::styled("F1", Style::default().fg(Color::Rgb(56, 189, 248))),
         Span::raw(" Help │ "),
-        Span::styled("<C-p>", Style::default().fg(Color::Rgb(56, 189, 248))),
-        Span::raw(" Command Palette │ "),
-        Span::styled("<Tab>", Style::default().fg(Color::Rgb(56, 189, 248))),
-        Span::raw(" Switch Pane │ "),
+        Span::styled("F6", Style::default().fg(Color::Yellow)),
+        Span::raw(" Pane │ "),
+        Span::styled("<C-b>", Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::raw(" Esc │ "),
         Span::styled("<C-q>", Style::default().fg(Color::Rgb(239, 68, 68))),
         Span::raw(" Quit"),
     ];
 
     f.render_widget(Paragraph::new(Line::from(left_spans)), header_chunks[0]);
-    f.render_widget(
-        Paragraph::new(Line::from(right_spans)).alignment(Alignment::Right),
-        header_chunks[1],
-    );
+    f.render_widget(Paragraph::new(Line::from(mid_spans)).alignment(Alignment::Center), header_chunks[1]);
+    f.render_widget(Paragraph::new(Line::from(right_spans)).alignment(Alignment::Right), header_chunks[2]);
 }
 
 fn draw_body(f: &mut Frame, app: &mut App, area: Rect) {
-    // 3-column layout: Left (Explorer), Center (Terminal), Right (Git & Agents)
-    let body_chunks = Layout::default()
+    if app.is_maximized {
+        app.explorer_area = Rect::default();
+        app.preview_area = Rect::default();
+        app.terminal_area = Rect::default();
+        app.git_area = Rect::default();
+        app.agents_area = Rect::default();
+
+        match app.active_pane {
+            ActivePane::Explorer => {
+                app.explorer_area = area;
+                draw_explorer_pane(f, app, area);
+            }
+            ActivePane::FilePreview => {
+                app.preview_area = area;
+                draw_file_preview_pane(f, app, area);
+            }
+            ActivePane::Terminal => {
+                app.terminal_area = area;
+                draw_terminal_pane(f, app, area);
+            }
+            ActivePane::Git => {
+                app.git_area = area;
+                draw_git_pane(f, app, area);
+            }
+            ActivePane::Agents => {
+                app.agents_area = area;
+                draw_agents_pane(f, app, area);
+            }
+        }
+        return;
+    }
+
+    let has_right = app.show_git || app.show_agents;
+    let mut col_constraints = Vec::new();
+
+    if app.show_explorer {
+        col_constraints.push(Constraint::Percentage(20));
+    }
+    col_constraints.push(Constraint::Min(30)); // Center column takes remaining
+    if has_right {
+        col_constraints.push(Constraint::Percentage(25));
+    }
+
+    let col_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(20),
-            Constraint::Percentage(55),
-            Constraint::Percentage(25),
-        ])
+        .constraints(col_constraints)
         .split(area);
 
-    draw_explorer_pane(f, app, body_chunks[0]);
+    let mut chunk_idx = 0;
+    if app.show_explorer {
+        app.explorer_area = col_chunks[chunk_idx];
+        draw_explorer_pane(f, app, col_chunks[chunk_idx]);
+        chunk_idx += 1;
+    } else {
+        app.explorer_area = Rect::default();
+    }
 
-    // Split Center column vertically: Top (File Preview / Code), Bottom (Terminal)
-    let center_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage(55),
-            Constraint::Percentage(45),
-        ])
-        .split(body_chunks[1]);
+    let center_area = col_chunks[chunk_idx];
+    chunk_idx += 1;
 
-    draw_file_preview_pane(f, app, center_chunks[0]);
-    draw_terminal_pane(f, app, center_chunks[1]);
+    // Center column: preview + terminal
+    if app.show_preview {
+        let center_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+            .split(center_area);
 
-    draw_right_column(f, app, body_chunks[2]);
+        app.preview_area = center_chunks[0];
+        draw_file_preview_pane(f, app, center_chunks[0]);
+
+        app.terminal_area = center_chunks[1];
+        draw_terminal_pane(f, app, center_chunks[1]);
+    } else {
+        app.preview_area = Rect::default();
+        app.terminal_area = center_area;
+        draw_terminal_pane(f, app, center_area);
+    }
+
+    // Right column: Git and/or Agents
+    if has_right {
+        let right_area = col_chunks[chunk_idx];
+        if app.show_git && app.show_agents {
+            let right_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
+                .split(right_area);
+
+            app.git_area = right_chunks[0];
+            draw_git_pane(f, app, right_chunks[0]);
+
+            app.agents_area = right_chunks[1];
+            draw_agents_pane(f, app, right_chunks[1]);
+        } else if app.show_git {
+            app.git_area = right_area;
+            app.agents_area = Rect::default();
+            draw_git_pane(f, app, right_area);
+        } else {
+            app.git_area = Rect::default();
+            app.agents_area = right_area;
+            draw_agents_pane(f, app, right_area);
+        }
+    } else {
+        app.git_area = Rect::default();
+        app.agents_area = Rect::default();
+    }
 }
 
 fn draw_file_preview_pane(f: &mut Frame, app: &App, area: Rect) {
@@ -126,9 +221,10 @@ fn draw_file_preview_pane(f: &mut Frame, app: &App, area: Rect) {
         Color::Rgb(30, 41, 59)
     };
 
+    let dirty_tag = if app.editor_dirty { " ● [Modified]" } else { "" };
     let (title, lines) = match &app.preview_content {
-        Some((name, lines)) => (format!(" 📄 {} ", name), lines.as_slice()),
-        None => (" 📄 File Preview ".to_string(), [].as_slice()),
+        Some((name, lines)) => (format!(" 📄 {}{} [×] ", name, dirty_tag), lines.as_slice()),
+        None => (" 📄 File Preview [×] ".to_string(), [].as_slice()),
     };
 
     let block = Block::default()
@@ -143,7 +239,7 @@ fn draw_file_preview_pane(f: &mut Frame, app: &App, area: Rect) {
     if lines.is_empty() {
         let empty_msg = vec![
             Line::raw(""),
-            Line::styled("  Select a file in Explorer (j/k) to preview its contents.", Style::default().fg(Color::Rgb(100, 116, 139))),
+            Line::styled("  Select a file in Explorer (j/k or click) to preview its contents.", Style::default().fg(Color::Rgb(100, 116, 139))),
         ];
         f.render_widget(Paragraph::new(empty_msg), inner);
         return;
@@ -171,19 +267,32 @@ fn draw_file_preview_pane(f: &mut Frame, app: &App, area: Rect) {
 
     f.render_widget(Paragraph::new(rendered_lines), chunks[0]);
 
-    // Bottom buffer status line (matching TIDE.png: NORMAL main.rs utf-8 Ln 1, Col 1)
-    let current_line = (scroll + 1).min(lines.len());
-    let mode_span = Span::styled(" NORMAL ", Style::default().bg(Color::Rgb(34, 197, 94)).fg(Color::Black).add_modifier(Modifier::BOLD));
+    // Bottom buffer status line
+    let (mode_text, mode_color, mode_desc) = match app.editor_mode {
+        crate::app::EditorMode::Normal => (" NORMAL ", Color::Rgb(34, 197, 94), "[i] Edit  [e] VS Code  "),
+        crate::app::EditorMode::Insert => (" INSERT ", Color::Rgb(56, 189, 248), "Ctrl+s: Save  Esc: Normal  "),
+    };
+    let mode_span = Span::styled(mode_text, Style::default().bg(mode_color).fg(Color::Black).add_modifier(Modifier::BOLD));
     let name_span = Span::styled(format!(" {} ", app.preview_content.as_ref().map(|(n, _)| n.as_str()).unwrap_or("")), Style::default().fg(Color::White));
-    let pos_span = Span::styled(format!("utf-8  Ln {}, Total {} ", current_line, lines.len()), Style::default().fg(Color::Rgb(148, 163, 184)));
+    let desc_span = Span::styled(mode_desc, Style::default().fg(Color::Rgb(148, 163, 184)));
+    let pos_span = Span::styled(format!("Ln {}, Col {} │ utf-8 ", app.editor_cursor.0 + 1, app.editor_cursor.1 + 1), Style::default().fg(Color::Rgb(148, 163, 184)));
 
     let status_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(20), Constraint::Length(30)])
+        .constraints([Constraint::Min(25), Constraint::Length(40)])
         .split(chunks[1]);
 
-    f.render_widget(Paragraph::new(Line::from(vec![mode_span, name_span])), status_chunks[0]);
+    f.render_widget(Paragraph::new(Line::from(vec![mode_span, name_span, desc_span])), status_chunks[0]);
     f.render_widget(Paragraph::new(Line::from(pos_span)).alignment(Alignment::Right), status_chunks[1]);
+
+    // Active Cursor positioning
+    if is_focused {
+        let cursor_row = app.editor_cursor.0.saturating_sub(scroll);
+        let cursor_col = app.editor_cursor.1 + 7; // line numbers margin
+        if cursor_row < view_height && (cursor_col as u16) < inner.width {
+            f.set_cursor_position((inner.x + cursor_col as u16, chunks[0].y + cursor_row as u16));
+        }
+    }
 }
 
 fn highlight_code_line(line: &str) -> Vec<Span<'static>> {
@@ -252,7 +361,7 @@ fn draw_explorer_pane(f: &mut Frame, app: &App, area: Rect) {
         .collect();
 
     let block = Block::default()
-        .title(" 📁 Explorer ")
+        .title(" 📁 Explorer [×] ")
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(border_color));
@@ -282,6 +391,8 @@ fn draw_terminal_pane(f: &mut Frame, app: &mut App, area: Rect) {
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(1), Constraint::Min(0)])
         .split(inner_area);
+
+    app.terminal_tabs_area = chunks[0];
 
     // Tab bar
     let tab_titles: Vec<Line> = app
@@ -350,8 +461,8 @@ fn draw_terminal_pane(f: &mut Frame, app: &mut App, area: Rect) {
 
             f.render_widget(Paragraph::new(lines), screen_area);
 
-            // Cursor placement
-            if is_focused && !screen.hide_cursor() {
+            // Active Cursor placement
+            if is_focused {
                 let (c_row, c_col) = screen.cursor_position();
                 if c_row < screen_area.height && c_col < screen_area.width {
                     f.set_cursor_position((screen_area.x + c_col, screen_area.y + c_row));
@@ -359,16 +470,6 @@ fn draw_terminal_pane(f: &mut Frame, app: &mut App, area: Rect) {
             }
         }
     }
-}
-
-fn draw_right_column(f: &mut Frame, app: &App, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
-        .split(area);
-
-    draw_git_pane(f, app, chunks[0]);
-    draw_agents_pane(f, app, chunks[1]);
 }
 
 fn draw_git_pane(f: &mut Frame, app: &App, area: Rect) {
@@ -380,7 +481,7 @@ fn draw_git_pane(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let block = Block::default()
-        .title(" 🌿 Git ")
+        .title(" 🌿 Git [×] ")
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(border_color));
@@ -427,7 +528,7 @@ fn draw_agents_pane(f: &mut Frame, app: &App, area: Rect) {
         Color::Rgb(30, 41, 59)
     };
 
-    let title = format!(" 🤖 Agents ({} running) ", app.agents.len());
+    let title = format!(" 🤖 Agents ({} running) [×] ", app.agents.len());
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
@@ -543,47 +644,47 @@ fn draw_help_modal(f: &mut Frame, area: Rect) {
     f.render_widget(Clear, popup_area);
 
     let help_text = vec![
-        Line::styled("TIDE Keyboard Shortcuts", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
+        Line::styled("TIDE Keyboard & Mouse Shortcuts", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
         Line::raw(""),
         Line::from(vec![
-            Span::styled("<Tab>           ", Style::default().fg(Color::Yellow)),
-            Span::raw("Cycle active pane (Explorer -> Preview -> Terminal -> Git -> Agents)"),
+            Span::styled("Mouse Click     ", Style::default().fg(Color::Yellow)),
+            Span::raw("Click any pane to focus, click tabs to switch, click [×] to close"),
+        ]),
+        Line::from(vec![
+            Span::styled("F6 / <Tab>      ", Style::default().fg(Color::Yellow)),
+            Span::raw("Cycle active pane (F6 works everywhere, including inside terminal)"),
+        ]),
+        Line::from(vec![
+            Span::styled("F2 / F3 / F4 / F5", Style::default().fg(Color::Yellow)),
+            Span::raw("Toggle panels on/off: F2 (Explorer), F5 (Preview), F3 (Git), F4 (Agents)"),
+        ]),
+        Line::from(vec![
+            Span::styled("F11             ", Style::default().fg(Color::Yellow)),
+            Span::raw("Maximize / restore active pane to full screen"),
         ]),
         Line::from(vec![
             Span::styled("<Ctrl-b>        ", Style::default().fg(Color::Yellow)),
             Span::raw("Escape child terminal focus and return to TIDE controls"),
         ]),
         Line::from(vec![
-            Span::styled("<Ctrl-p>        ", Style::default().fg(Color::Yellow)),
-            Span::raw("Open Command Palette"),
+            Span::styled("i / Ctrl+s / Esc", Style::default().fg(Color::Yellow)),
+            Span::raw("Code Preview: [i] enter edit mode, [Ctrl+s] save to disk, [Esc] exit edit"),
         ]),
         Line::from(vec![
-            Span::styled("<Ctrl-a> / a    ", Style::default().fg(Color::Yellow)),
-            Span::raw("Launch coding agent in isolated Git worktree"),
-        ]),
-        Line::from(vec![
-            Span::styled("<Ctrl-t>        ", Style::default().fg(Color::Yellow)),
-            Span::raw("Open new terminal session tab"),
-        ]),
-        Line::from(vec![
-            Span::styled("<Ctrl-w>        ", Style::default().fg(Color::Yellow)),
-            Span::raw("Close active terminal session tab"),
+            Span::styled("e               ", Style::default().fg(Color::Yellow)),
+            Span::raw("Open current file in VS Code / external editor"),
         ]),
         Line::from(vec![
             Span::styled("Alt+1 .. Alt+9  ", Style::default().fg(Color::Yellow)),
             Span::raw("Switch directly to Terminal tab 1..9"),
         ]),
         Line::from(vec![
-            Span::styled("Alt+Left / Right", Style::default().fg(Color::Yellow)),
-            Span::raw("Cycle Previous / Next Terminal tab (or Ctrl+PgUp / Ctrl+PgDn)"),
+            Span::styled("<Ctrl-a> / a    ", Style::default().fg(Color::Yellow)),
+            Span::raw("Launch coding agent in isolated Git worktree"),
         ]),
         Line::from(vec![
             Span::styled("d / m / x       ", Style::default().fg(Color::Yellow)),
             Span::raw("Agents pane: [d] Diff Review, [m] Merge into main, [x] Discard"),
-        ]),
-        Line::from(vec![
-            Span::styled("j / k           ", Style::default().fg(Color::Yellow)),
-            Span::raw("Navigate items in active pane"),
         ]),
         Line::from(vec![
             Span::styled("<Ctrl-q>        ", Style::default().fg(Color::Rgb(239, 68, 68))),
@@ -594,7 +695,7 @@ fn draw_help_modal(f: &mut Frame, area: Rect) {
     ];
 
     let block = Block::default()
-        .title(" Help ")
+        .title(" Help (F1) ")
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Rgb(56, 189, 248)));

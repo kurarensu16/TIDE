@@ -19,6 +19,12 @@ pub enum ActivePane {
     Agents,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum EditorMode {
+    Normal,
+    Insert,
+}
+
 pub struct App {
     pub workspace_dir: PathBuf,
     pub workspace_name: String,
@@ -31,6 +37,22 @@ pub struct App {
     pub active_agent_idx: usize,
     pub preview_content: Option<(String, Vec<String>)>,
     pub preview_scroll: usize,
+    pub editor_mode: EditorMode,
+    pub editor_cursor: (usize, usize),
+    pub editor_file_path: Option<PathBuf>,
+    pub editor_dirty: bool,
+    pub show_explorer: bool,
+    pub show_preview: bool,
+    pub show_git: bool,
+    pub show_agents: bool,
+    pub is_maximized: bool,
+    pub explorer_area: ratatui::layout::Rect,
+    pub preview_area: ratatui::layout::Rect,
+    pub terminal_area: ratatui::layout::Rect,
+    pub terminal_tabs_area: ratatui::layout::Rect,
+    pub git_area: ratatui::layout::Rect,
+    pub agents_area: ratatui::layout::Rect,
+    pub header_area: ratatui::layout::Rect,
     pub dirty_tx: Sender<()>,
     pub dirty_rx: Receiver<()>,
     pub show_help: bool,
@@ -66,6 +88,22 @@ impl App {
             active_agent_idx: 0,
             preview_content: None,
             preview_scroll: 0,
+            editor_mode: EditorMode::Normal,
+            editor_cursor: (0, 0),
+            editor_file_path: None,
+            editor_dirty: false,
+            show_explorer: true,
+            show_preview: true,
+            show_git: true,
+            show_agents: true,
+            is_maximized: false,
+            explorer_area: ratatui::layout::Rect::default(),
+            preview_area: ratatui::layout::Rect::default(),
+            terminal_area: ratatui::layout::Rect::default(),
+            terminal_tabs_area: ratatui::layout::Rect::default(),
+            git_area: ratatui::layout::Rect::default(),
+            agents_area: ratatui::layout::Rect::default(),
+            header_area: ratatui::layout::Rect::default(),
             dirty_tx: dirty_tx.clone(),
             dirty_rx,
             show_help: false,
@@ -96,12 +134,70 @@ impl App {
                 if let Ok(content) = std::fs::read_to_string(&entry.path) {
                     let lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
                     self.preview_content = Some((entry.name.clone(), lines));
+                    self.editor_file_path = Some(entry.path.clone());
                     self.preview_scroll = 0;
+                    self.editor_cursor = (0, 0);
+                    self.editor_dirty = false;
                     return;
                 }
             }
         }
         self.preview_content = None;
+        self.editor_file_path = None;
+        self.editor_dirty = false;
+    }
+
+    pub fn save_editor_content(&mut self) {
+        if let (Some(path), Some((_, lines))) = (&self.editor_file_path, &self.preview_content) {
+            let content = lines.join("\r\n");
+            match std::fs::write(path, content) {
+                Ok(_) => {
+                    self.editor_dirty = false;
+                    self.status_message = Some((
+                        format!("Saved {}", path.file_name().unwrap_or_default().to_string_lossy()),
+                        std::time::Instant::now(),
+                    ));
+                }
+                Err(e) => {
+                    self.status_message = Some((
+                        format!("Failed to save: {}", e),
+                        std::time::Instant::now(),
+                    ));
+                }
+            }
+        }
+    }
+
+    pub fn open_in_external_editor(&mut self, path: &std::path::Path) {
+        let (cmd, args) = crate::terminal::resolve_command("code", &[]);
+        let (exec, full_args) = if !cmd.is_empty() && (cmd.ends_with("code.cmd") || cmd.ends_with("code.exe") || cmd == "cmd.exe") {
+            let mut a = args;
+            a.push(path.to_string_lossy().to_string());
+            (cmd, a)
+        } else if cfg!(windows) {
+            ("notepad.exe".to_string(), vec![path.to_string_lossy().to_string()])
+        } else {
+            ("nano".to_string(), vec![path.to_string_lossy().to_string()])
+        };
+
+        let mut child = std::process::Command::new(&exec);
+        for arg in &full_args {
+            child.arg(arg);
+        }
+        match child.spawn() {
+            Ok(_) => {
+                self.status_message = Some((
+                    format!("Opened {} in external editor", path.file_name().unwrap_or_default().to_string_lossy()),
+                    std::time::Instant::now(),
+                ));
+            }
+            Err(e) => {
+                self.status_message = Some((
+                    format!("Failed to launch editor: {}", e),
+                    std::time::Instant::now(),
+                ));
+            }
+        }
     }
 
     pub fn spawn_terminal(&mut self, title: &str, cmd: &str, args: &[&str]) -> anyhow::Result<()> {
@@ -253,13 +349,141 @@ impl App {
     }
 
     pub fn cycle_active_pane(&mut self) {
-        self.active_pane = match self.active_pane {
-            ActivePane::Explorer => ActivePane::FilePreview,
-            ActivePane::FilePreview => ActivePane::Terminal,
-            ActivePane::Terminal => ActivePane::Git,
-            ActivePane::Git => ActivePane::Agents,
-            ActivePane::Agents => ActivePane::Explorer,
-        };
+        let candidates = [
+            (ActivePane::Explorer, self.show_explorer),
+            (ActivePane::FilePreview, self.show_preview),
+            (ActivePane::Terminal, true),
+            (ActivePane::Git, self.show_git),
+            (ActivePane::Agents, self.show_agents),
+        ];
+
+        let next_pane = self.active_pane;
+        let mut found_current = false;
+
+        for _ in 0..2 {
+            for (pane, is_visible) in candidates {
+                if found_current && is_visible {
+                    self.active_pane = pane;
+                    return;
+                }
+                if pane == next_pane {
+                    found_current = true;
+                }
+            }
+        }
+    }
+
+    pub fn handle_mouse_event(&mut self, mouse: crossterm::event::MouseEvent) {
+        let (x, y) = (mouse.column, mouse.row);
+
+        match mouse.kind {
+            crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+                // Check Terminal tab bar clicks
+                if self.terminal_tabs_area.contains(ratatui::layout::Position { x, y }) {
+                    self.active_pane = ActivePane::Terminal;
+                    let rel_x = x.saturating_sub(self.terminal_tabs_area.x);
+                    let tab_width = 24; // approximate average tab width
+                    let clicked_tab = (rel_x as usize) / tab_width;
+                    if clicked_tab < self.terminals.len() {
+                        self.active_terminal_idx = clicked_tab;
+                    }
+                    return;
+                }
+
+                // Check Explorer clicks
+                if self.explorer_area.contains(ratatui::layout::Position { x, y }) {
+                    if y == self.explorer_area.y && x >= self.explorer_area.right().saturating_sub(4) {
+                        self.show_explorer = false;
+                        return;
+                    }
+                    self.active_pane = ActivePane::Explorer;
+                    let inner_y = self.explorer_area.y + 1;
+                    if y >= inner_y {
+                        let clicked_idx = (y - inner_y) as usize;
+                        if clicked_idx < self.explorer.entries.len() {
+                            self.explorer.selected = clicked_idx;
+                            self.update_file_preview();
+                        }
+                    }
+                    return;
+                }
+
+                // Check Preview clicks
+                if self.preview_area.contains(ratatui::layout::Position { x, y }) {
+                    if y == self.preview_area.y && x >= self.preview_area.right().saturating_sub(4) {
+                        self.show_preview = false;
+                        return;
+                    }
+                    self.active_pane = ActivePane::FilePreview;
+                    let inner_y = self.preview_area.y + 1;
+                    let inner_x = self.preview_area.x + 7;
+                    if y >= inner_y {
+                        let clicked_line = self.preview_scroll + (y - inner_y) as usize;
+                        let clicked_col = (x as usize).saturating_sub(inner_x as usize);
+                        if let Some((_, lines)) = &self.preview_content {
+                            if clicked_line < lines.len() {
+                                self.editor_cursor.0 = clicked_line;
+                                self.editor_cursor.1 = clicked_col.min(lines[clicked_line].chars().count());
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // Check Terminal screen clicks
+                if self.terminal_area.contains(ratatui::layout::Position { x, y }) {
+                    self.active_pane = ActivePane::Terminal;
+                    return;
+                }
+
+                // Check Git pane clicks
+                if self.git_area.contains(ratatui::layout::Position { x, y }) {
+                    if y == self.git_area.y && x >= self.git_area.right().saturating_sub(4) {
+                        self.show_git = false;
+                        return;
+                    }
+                    self.active_pane = ActivePane::Git;
+                    return;
+                }
+
+                // Check Agents pane clicks
+                if self.agents_area.contains(ratatui::layout::Position { x, y }) {
+                    if y == self.agents_area.y && x >= self.agents_area.right().saturating_sub(4) {
+                        self.show_agents = false;
+                        return;
+                    }
+                    self.active_pane = ActivePane::Agents;
+                    let inner_y = self.agents_area.y + 1;
+                    if y >= inner_y {
+                        let clicked_agent = (y - inner_y) as usize / 4;
+                        if clicked_agent < self.agents.len() {
+                            self.active_agent_idx = clicked_agent;
+                        }
+                    }
+                }
+            }
+            crossterm::event::MouseEventKind::ScrollDown => {
+                if self.preview_area.contains(ratatui::layout::Position { x, y }) {
+                    if let Some((_, lines)) = &self.preview_content {
+                        if self.preview_scroll + 2 < lines.len() {
+                            self.preview_scroll += 2;
+                        }
+                    }
+                } else if self.explorer_area.contains(ratatui::layout::Position { x, y }) {
+                    self.explorer.next();
+                    self.update_file_preview();
+                }
+            }
+            crossterm::event::MouseEventKind::ScrollUp => {
+                if self.preview_area.contains(ratatui::layout::Position { x, y }) {
+                    self.preview_scroll = self.preview_scroll.saturating_sub(2);
+                } else if self.explorer_area.contains(ratatui::layout::Position { x, y }) {
+                    self.explorer.prev();
+                    self.update_file_preview();
+                }
+            }
+            _ => {}
+        }
     }
 
     pub fn handle_key_event(&mut self, key: KeyEvent) {
@@ -339,26 +563,55 @@ impl App {
             return;
         }
 
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('p') {
-            self.show_command_palette = true;
-            return;
+        // Universal Function Keys: never conflict with CLI tools (Claude, Agy, etc.)
+        match key.code {
+            KeyCode::F(1) => {
+                self.show_help = !self.show_help;
+                return;
+            }
+            KeyCode::F(2) => {
+                self.show_explorer = !self.show_explorer;
+                return;
+            }
+            KeyCode::F(3) => {
+                self.show_git = !self.show_git;
+                return;
+            }
+            KeyCode::F(4) => {
+                self.show_agents = !self.show_agents;
+                return;
+            }
+            KeyCode::F(5) => {
+                self.show_preview = !self.show_preview;
+                return;
+            }
+            KeyCode::F(6) => {
+                self.cycle_active_pane();
+                return;
+            }
+            KeyCode::F(11) => {
+                self.is_maximized = !self.is_maximized;
+                return;
+            }
+            _ => {}
         }
 
-        // Global hotkey to open agent launcher anytime: Ctrl+a
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('a') {
-            self.show_agent_launch_modal = true;
-            return;
-        }
+        // When NOT inside Terminal, hotkeys like Ctrl+p, Ctrl+a, and Tab are active
+        if self.active_pane != ActivePane::Terminal {
+            if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('p') {
+                self.show_command_palette = true;
+                return;
+            }
 
-        if key.code == KeyCode::F(1) {
-            self.show_help = true;
-            return;
-        }
+            if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('a') {
+                self.show_agent_launch_modal = true;
+                return;
+            }
 
-        // Pane switching: Tab cycles panes when NOT focused in Terminal
-        if key.code == KeyCode::Tab && self.active_pane != ActivePane::Terminal {
-            self.cycle_active_pane();
-            return;
+            if key.code == KeyCode::Tab {
+                self.cycle_active_pane();
+                return;
+            }
         }
 
         // Pane-specific routing
@@ -376,28 +629,155 @@ impl App {
                     self.explorer.refresh();
                     self.update_file_preview();
                 }
+                KeyCode::Char('e') => {
+                    if let Some(entry) = self.explorer.selected_entry() {
+                        let path = entry.path.clone();
+                        self.open_in_external_editor(&path);
+                    }
+                }
                 KeyCode::Enter => {
                     self.active_pane = ActivePane::FilePreview;
                 }
                 _ => {}
             },
-            ActivePane::FilePreview => match key.code {
-                KeyCode::Char('j') | KeyCode::Down => {
-                    if let Some((_, lines)) = &self.preview_content {
-                        if self.preview_scroll + 1 < lines.len() {
-                            self.preview_scroll += 1;
+            ActivePane::FilePreview => match self.editor_mode {
+                EditorMode::Normal => match key.code {
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        if let Some((_, lines)) = &self.preview_content {
+                            if self.editor_cursor.0 + 1 < lines.len() {
+                                self.editor_cursor.0 += 1;
+                                if self.editor_cursor.0 >= self.preview_scroll + 20 {
+                                    self.preview_scroll += 1;
+                                }
+                            }
                         }
                     }
-                }
-                KeyCode::Char('k') | KeyCode::Up => {
-                    if self.preview_scroll > 0 {
-                        self.preview_scroll -= 1;
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        if self.editor_cursor.0 > 0 {
+                            self.editor_cursor.0 -= 1;
+                            if self.editor_cursor.0 < self.preview_scroll {
+                                self.preview_scroll = self.editor_cursor.0;
+                            }
+                        }
                     }
-                }
-                KeyCode::Char('i') | KeyCode::Enter => {
-                    self.active_pane = ActivePane::Terminal;
-                }
-                _ => {}
+                    KeyCode::Char('h') | KeyCode::Left => {
+                        if self.editor_cursor.1 > 0 {
+                            self.editor_cursor.1 -= 1;
+                        }
+                    }
+                    KeyCode::Char('l') | KeyCode::Right => {
+                        if let Some((_, lines)) = &self.preview_content {
+                            if let Some(line) = lines.get(self.editor_cursor.0) {
+                                if self.editor_cursor.1 < line.chars().count() {
+                                    self.editor_cursor.1 += 1;
+                                }
+                            }
+                        }
+                    }
+                    KeyCode::Char('i') => {
+                        self.editor_mode = EditorMode::Insert;
+                        self.status_message = Some((
+                            "-- INSERT -- (Type text, Ctrl+s: Save, Esc: Normal)".to_string(),
+                            std::time::Instant::now(),
+                        ));
+                    }
+                    KeyCode::Char('e') => {
+                        if let Some(path) = &self.editor_file_path {
+                            let path_clone = path.clone();
+                            self.open_in_external_editor(&path_clone);
+                        }
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        self.save_editor_content();
+                    }
+                    KeyCode::Enter => {
+                        self.active_pane = ActivePane::Terminal;
+                    }
+                    _ => {}
+                },
+                EditorMode::Insert => match key.code {
+                    KeyCode::Esc => {
+                        self.editor_mode = EditorMode::Normal;
+                        self.status_message = Some(("-- NORMAL --".to_string(), std::time::Instant::now()));
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        self.save_editor_content();
+                    }
+                    KeyCode::Char(c) => {
+                        if let Some((_, lines)) = &mut self.preview_content {
+                            if lines.is_empty() {
+                                lines.push(String::new());
+                            }
+                            let (row, col) = self.editor_cursor;
+                            if let Some(line) = lines.get_mut(row) {
+                                let byte_idx = line.char_indices().nth(col).map(|(i, _)| i).unwrap_or(line.len());
+                                line.insert(byte_idx, c);
+                                self.editor_cursor.1 += 1;
+                                self.editor_dirty = true;
+                            }
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        if let Some((_, lines)) = &mut self.preview_content {
+                            let (row, col) = self.editor_cursor;
+                            if col > 0 {
+                                if let Some(line) = lines.get_mut(row) {
+                                    let byte_idx = line.char_indices().nth(col - 1).map(|(i, _)| i).unwrap_or(0);
+                                    line.remove(byte_idx);
+                                    self.editor_cursor.1 -= 1;
+                                    self.editor_dirty = true;
+                                }
+                            } else if row > 0 {
+                                let curr_line = lines.remove(row);
+                                let prev_line = &mut lines[row - 1];
+                                self.editor_cursor.1 = prev_line.chars().count();
+                                prev_line.push_str(&curr_line);
+                                self.editor_cursor.0 -= 1;
+                                self.editor_dirty = true;
+                            }
+                        }
+                    }
+                    KeyCode::Enter => {
+                        if let Some((_, lines)) = &mut self.preview_content {
+                            let (row, col) = self.editor_cursor;
+                            if let Some(line) = lines.get_mut(row) {
+                                let byte_idx = line.char_indices().nth(col).map(|(i, _)| i).unwrap_or(line.len());
+                                let rest = line.split_off(byte_idx);
+                                lines.insert(row + 1, rest);
+                                self.editor_cursor.0 += 1;
+                                self.editor_cursor.1 = 0;
+                                self.editor_dirty = true;
+                            }
+                        }
+                    }
+                    KeyCode::Left => {
+                        if self.editor_cursor.1 > 0 {
+                            self.editor_cursor.1 -= 1;
+                        }
+                    }
+                    KeyCode::Right => {
+                        if let Some((_, lines)) = &self.preview_content {
+                            if let Some(line) = lines.get(self.editor_cursor.0) {
+                                if self.editor_cursor.1 < line.chars().count() {
+                                    self.editor_cursor.1 += 1;
+                                }
+                            }
+                        }
+                    }
+                    KeyCode::Up => {
+                        if self.editor_cursor.0 > 0 {
+                            self.editor_cursor.0 -= 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        if let Some((_, lines)) = &self.preview_content {
+                            if self.editor_cursor.0 + 1 < lines.len() {
+                                self.editor_cursor.0 += 1;
+                            }
+                        }
+                    }
+                    _ => {}
+                },
             },
             ActivePane::Terminal => {
                 // Escape chord: Ctrl+b returns focus to TIDE Explorer pane
@@ -460,7 +840,7 @@ impl App {
                     return;
                 }
 
-                // Forward raw keystrokes to active PTY
+                // Forward raw keystrokes to active PTY (including Tab, Ctrl+p, etc. for claude/agy)
                 if let Some(session) = self.terminals.get(self.active_terminal_idx) {
                     let input_bytes = key_event_to_bytes(key);
                     if !input_bytes.is_empty() {

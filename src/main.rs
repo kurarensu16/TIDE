@@ -18,7 +18,8 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use clap::Parser;
 use crossterm::{
-    event::{self, Event},
+    cursor::{EnableBlinking, Show},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -57,7 +58,7 @@ fn main() -> Result<()> {
     }
 
     let mut stdout = stdout();
-    if let Err(e) = execute!(stdout, EnterAlternateScreen) {
+    if let Err(e) = execute!(stdout, EnterAlternateScreen, EnableMouseCapture, EnableBlinking, Show) {
         let _ = disable_raw_mode();
         eprintln!("Failed to enter alternate screen: {}", e);
         return Ok(());
@@ -71,7 +72,7 @@ fn main() -> Result<()> {
         Err(e) => {
             // Restore terminal before printing error
             let _ = disable_raw_mode();
-            let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
+            let _ = execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
             eprintln!("Failed to initialize TIDE: {}", e);
             std::process::exit(1);
         }
@@ -97,20 +98,26 @@ fn main() -> Result<()> {
             last_render = Instant::now();
         }
 
-        // Poll for keyboard events with small timeout to allow backpressure
+        // Poll for input events (keyboard + mouse) with small timeout to allow backpressure
         if event::poll(Duration::from_millis(8))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == event::KeyEventKind::Press {
-                    app.handle_key_event(key);
+            match event::read()? {
+                Event::Key(key) => {
+                    if key.kind == event::KeyEventKind::Press {
+                        app.handle_key_event(key);
+                    }
                 }
+                Event::Mouse(mouse) => {
+                    app.handle_mouse_event(mouse);
+                }
+                _ => {}
             }
         }
     }
 
     // Graceful teardown
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+    let _ = disable_raw_mode();
+    let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture);
+    let _ = terminal.show_cursor();
 
     println!("TIDE terminated cleanly. All sessions closed.");
     Ok(())
