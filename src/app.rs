@@ -38,6 +38,7 @@ pub struct App {
     pub show_agent_launch_modal: bool,
     pub show_diff_modal: bool,
     pub diff_modal_content: Option<(String, String)>,
+    pub status_message: Option<(String, std::time::Instant)>,
     pub should_quit: bool,
 }
 
@@ -53,19 +54,6 @@ impl App {
         let explorer = FileExplorer::new(&workspace_dir);
         let git_info = GitRepoInfo::fetch(&workspace_dir.to_string_lossy());
 
-        // Pre-populate demonstrative agent sessions matching TIDE.png
-        let mut codex = AgentSession::new("codex-1", "Codex", "src/agents/codex.rs", "tide/codex-worktree");
-        codex.start_time = std::time::Instant::now() - std::time::Duration::from_secs(12 * 60);
-
-        let mut claude = AgentSession::new("claude-1", "Claude Code", "src/app/state.rs", "tide/claude-worktree");
-        claude.start_time = std::time::Instant::now() - std::time::Duration::from_secs(8 * 60);
-
-        let mut antigravity = AgentSession::new("antigravity-1", "Antigravity", "docs/plan.md", "tide/antigravity-worktree");
-        antigravity.start_time = std::time::Instant::now() - std::time::Duration::from_secs(3 * 60);
-        antigravity.state = crate::agents::AgentState::WaitingForInput;
-
-        let agents = vec![codex, claude, antigravity];
-
         let mut app = Self {
             workspace_dir: workspace_dir.clone(),
             workspace_name,
@@ -74,7 +62,7 @@ impl App {
             git_info,
             terminals: Vec::new(),
             active_terminal_idx: 0,
-            agents,
+            agents: Vec::new(),
             active_agent_idx: 0,
             preview_content: None,
             preview_scroll: 0,
@@ -85,6 +73,7 @@ impl App {
             show_agent_launch_modal: false,
             show_diff_modal: false,
             diff_modal_content: None,
+            status_message: None,
             should_quit: false,
         };
 
@@ -142,23 +131,66 @@ impl App {
         let base_branch = if self.git_info.branch.is_empty() { "main" } else { &self.git_info.branch };
 
         // 1. Create Git Worktree
-        let wt = WorktreeInfo::create(&self.workspace_dir, &session_id, base_branch)?;
+        let wt = match WorktreeInfo::create(&self.workspace_dir, &session_id, base_branch) {
+            Ok(w) => w,
+            Err(e) => {
+                let err_str = format!("Failed to create worktree: {}", e);
+                self.status_message = Some((err_str.clone(), std::time::Instant::now()));
+                return Err(anyhow::anyhow!(err_str));
+            }
+        };
 
         // 2. Spawn Terminal in the isolated worktree directory
-        let title = format!("{} (Agent)", agent_name);
-        self.spawn_terminal_in_dir(&title, cmd, args, Some(&wt.path.to_string_lossy()))?;
+        let title = format!("{} ({})", agent_name, session_id);
+        let wt_path = wt.path.to_string_lossy().to_string();
+        if let Err(e) = self.spawn_terminal_in_dir(&title, cmd, args, Some(&wt_path)) {
+            let err_str = format!("Failed to spawn command '{}': {}", cmd, e);
+            self.status_message = Some((err_str.clone(), std::time::Instant::now()));
+            let _ = wt.cleanup(&self.workspace_dir);
+            return Err(anyhow::anyhow!(err_str));
+        }
         let term_idx = self.terminals.len() - 1;
 
         // 3. Register AgentSession
-        let mut session = AgentSession::new(&session_id, agent_name, task, &wt.branch);
+        let branch_name = wt.branch.clone();
+        let mut session = AgentSession::new(&session_id, agent_name, task, &branch_name);
         session.worktree = Some(wt);
         session.terminal_idx = Some(term_idx);
         self.agents.push(session);
         self.active_agent_idx = self.agents.len() - 1;
 
-        // Switch to terminal pane to show live output
+        self.status_message = Some((
+            format!("Agent '{}' running on branch {}", agent_name, branch_name),
+            std::time::Instant::now(),
+        ));
         self.active_pane = ActivePane::Terminal;
         Ok(())
+    }
+
+    /// Automatically updates agent status and confidence based on PTY process lifecycle and idle heuristics.
+    pub fn update_agent_heuristics(&mut self) {
+        for agent in &mut self.agents {
+            if let Some(t_idx) = agent.terminal_idx {
+                if let Some(term) = self.terminals.get(t_idx) {
+                    let is_alive = term.is_alive.lock().map(|a| *a).unwrap_or(true);
+                    if !is_alive {
+                        agent.state = crate::agents::AgentState::Completed;
+                        agent.confidence = crate::agents::Confidence::Confirmed;
+                    } else {
+                        let elapsed_activity = term.last_activity.lock()
+                            .map(|t| t.elapsed().as_secs())
+                            .unwrap_or(0);
+                        if elapsed_activity > 4 {
+                            agent.state = crate::agents::AgentState::WaitingForInput;
+                            agent.confidence = crate::agents::Confidence::Inferred;
+                        } else {
+                            agent.state = crate::agents::AgentState::Running;
+                            agent.confidence = crate::agents::Confidence::Confirmed;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn inspect_agent_diff(&mut self) {
@@ -195,6 +227,14 @@ impl App {
             if let Some(t_idx) = agent.terminal_idx {
                 if t_idx < self.terminals.len() {
                     self.terminals.remove(t_idx);
+                    // Update remaining agent terminal indexes
+                    for other_agent in &mut self.agents {
+                        if let Some(ref mut idx) = other_agent.terminal_idx {
+                            if *idx > t_idx {
+                                *idx -= 1;
+                            }
+                        }
+                    }
                     if self.active_terminal_idx >= self.terminals.len() && !self.terminals.is_empty() {
                         self.active_terminal_idx = self.terminals.len() - 1;
                     }
@@ -203,6 +243,10 @@ impl App {
             if self.active_agent_idx >= self.agents.len() && !self.agents.is_empty() {
                 self.active_agent_idx = self.agents.len() - 1;
             }
+            self.status_message = Some((
+                format!("Agent session '{}' discarded and cleaned up.", agent.name),
+                std::time::Instant::now(),
+            ));
         }
         self.show_diff_modal = false;
         Ok(())
@@ -300,13 +344,19 @@ impl App {
             return;
         }
 
+        // Global hotkey to open agent launcher anytime: Ctrl+a
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('a') {
+            self.show_agent_launch_modal = true;
+            return;
+        }
+
         if key.code == KeyCode::F(1) {
             self.show_help = true;
             return;
         }
 
-        // Pane switching
-        if key.code == KeyCode::Tab {
+        // Pane switching: Tab cycles panes when NOT focused in Terminal
+        if key.code == KeyCode::Tab && self.active_pane != ActivePane::Terminal {
             self.cycle_active_pane();
             return;
         }
@@ -365,9 +415,46 @@ impl App {
                 // Close tab: Ctrl+w
                 if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('w') {
                     if self.terminals.len() > 1 {
-                        self.terminals.remove(self.active_terminal_idx);
+                        let closed_idx = self.active_terminal_idx;
+                        self.terminals.remove(closed_idx);
+                        for agent in &mut self.agents {
+                            if let Some(ref mut idx) = agent.terminal_idx {
+                                if *idx == closed_idx {
+                                    agent.terminal_idx = None;
+                                } else if *idx > closed_idx {
+                                    *idx -= 1;
+                                }
+                            }
+                        }
                         if self.active_terminal_idx >= self.terminals.len() {
-                            self.active_terminal_idx = self.terminals.len() - 1;
+                            self.active_terminal_idx = self.terminals.len().saturating_sub(1);
+                        }
+                    }
+                    return;
+                }
+
+                // Switch tabs: Alt+1..9
+                if key.modifiers.contains(KeyModifiers::ALT) {
+                    if let KeyCode::Char(c) = key.code {
+                        if let Some(d) = c.to_digit(10) {
+                            let target = (d as usize).saturating_sub(1);
+                            if target < self.terminals.len() {
+                                self.active_terminal_idx = target;
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                // Next/Previous tab: Alt+Right / Alt+Left or Ctrl+PageDown / Ctrl+PageUp
+                if (key.modifiers.contains(KeyModifiers::ALT) && (key.code == KeyCode::Right || key.code == KeyCode::Left))
+                    || (key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::PageDown || key.code == KeyCode::PageUp))
+                {
+                    if !self.terminals.is_empty() {
+                        if key.code == KeyCode::Right || key.code == KeyCode::PageDown {
+                            self.active_terminal_idx = (self.active_terminal_idx + 1) % self.terminals.len();
+                        } else {
+                            self.active_terminal_idx = (self.active_terminal_idx + self.terminals.len() - 1) % self.terminals.len();
                         }
                     }
                     return;

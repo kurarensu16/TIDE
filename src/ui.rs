@@ -54,7 +54,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
         .constraints([Constraint::Min(40), Constraint::Length(60)])
         .split(area);
 
-    let left_spans = vec![
+    let mut left_spans = vec![
         Span::styled(" ● ", Style::default().fg(Color::Rgb(34, 197, 94))),
         Span::styled("TIDE", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
         Span::raw("   "),
@@ -64,6 +64,13 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
         Span::styled(" ", Style::default().fg(Color::Rgb(168, 85, 247))),
         Span::styled(&app.git_info.branch, Style::default().fg(Color::Rgb(168, 85, 247))),
     ];
+
+    if let Some((msg, time)) = &app.status_message {
+        if time.elapsed().as_secs() < 12 {
+            left_spans.push(Span::raw("   │ "));
+            left_spans.push(Span::styled(format!("🔔 {}", msg), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)));
+        }
+    }
 
     let right_spans = vec![
         Span::styled("F1", Style::default().fg(Color::Rgb(56, 189, 248))),
@@ -282,15 +289,17 @@ fn draw_terminal_pane(f: &mut Frame, app: &mut App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, t)| {
-            let style = if i == app.active_terminal_idx {
+            let is_active = i == app.active_terminal_idx;
+            let style = if is_active {
                 Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::Rgb(148, 163, 184))
             };
+            let indicator = if is_active { "● " } else { "○ " };
             Line::from(vec![
-                Span::raw("💻 "),
-                Span::styled(format!("Terminal {} ({})", i + 1, t.title), style),
-                Span::raw(" "),
+                Span::styled(indicator, Style::default().fg(if is_active { Color::Rgb(34, 197, 94) } else { Color::Rgb(100, 116, 139) })),
+                Span::styled(format!("{}: {}", i + 1, t.title), style),
+                Span::raw("  "),
             ])
         })
         .collect();
@@ -427,45 +436,61 @@ fn draw_agents_pane(f: &mut Frame, app: &App, area: Rect) {
 
     let mut lines = Vec::new();
 
-    for (i, agent) in app.agents.iter().enumerate() {
-        let is_selected = is_focused && i == app.active_agent_idx;
-        let (dot_color, status_text) = match &agent.state {
-            AgentState::Running => (Color::Rgb(34, 197, 94), "Running"),
-            AgentState::WaitingForInput => (Color::Rgb(234, 179, 8), "Waiting for input"),
-            AgentState::Completed => (Color::Rgb(56, 189, 248), "Completed"),
-            AgentState::Failed(_) => (Color::Rgb(239, 68, 68), "Failed"),
-            AgentState::Idle => (Color::Rgb(148, 163, 184), "Idle"),
-        };
-
-        let conf_tag = match agent.confidence {
-            Confidence::Confirmed => "[Confirmed]",
-            Confidence::Inferred => "[Inferred?]",
-            Confidence::Unknown => "[Unknown]",
-        };
-
-        let prefix = if is_selected { "▶ " } else { "  " };
-
-        lines.push(Line::from(vec![
-            Span::styled(prefix, Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
-            Span::styled("● ", Style::default().fg(dot_color)),
-            Span::styled(&agent.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            Span::raw("  "),
-            Span::styled(status_text, Style::default().fg(dot_color)),
-            Span::styled(format!(" {} ", conf_tag), Style::default().fg(Color::Rgb(100, 116, 139))),
-            Span::styled(agent.formatted_runtime(), Style::default().fg(Color::Rgb(148, 163, 184))),
-        ]));
-
-        lines.push(Line::from(vec![
-            Span::raw("     ↳ "),
-            Span::styled(format!("Branch: {}", agent.worktree_branch), Style::default().fg(Color::Rgb(168, 85, 247))),
-        ]));
-
-        lines.push(Line::from(vec![
-            Span::raw("     ↳ "),
-            Span::styled(format!("Task: {}", agent.target_file_or_task), Style::default().fg(Color::Rgb(148, 163, 184))),
-        ]));
-
+    if app.agents.is_empty() {
         lines.push(Line::raw(""));
+        lines.push(Line::styled("  No active agent sessions.", Style::default().fg(Color::Rgb(148, 163, 184))));
+        lines.push(Line::raw(""));
+        lines.push(Line::from(vec![
+            Span::raw("  Press "),
+            Span::styled("[a]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" to launch an agent:"),
+        ]));
+        lines.push(Line::styled("  1. Antigravity CLI (agy)", Style::default().fg(Color::Rgb(56, 189, 248))));
+        lines.push(Line::styled("  2. Claude Code CLI (claude)", Style::default().fg(Color::Rgb(56, 189, 248))));
+        lines.push(Line::styled("  3. Worktree Shell (powershell)", Style::default().fg(Color::Rgb(56, 189, 248))));
+        lines.push(Line::raw(""));
+        lines.push(Line::styled("  Each agent runs in an isolated Git worktree.", Style::default().fg(Color::Rgb(100, 116, 139))));
+    } else {
+        for (i, agent) in app.agents.iter().enumerate() {
+            let is_selected = is_focused && i == app.active_agent_idx;
+            let (dot_color, status_text) = match &agent.state {
+                AgentState::Running => (Color::Rgb(34, 197, 94), "Running"),
+                AgentState::WaitingForInput => (Color::Rgb(234, 179, 8), "Waiting for input"),
+                AgentState::Completed => (Color::Rgb(56, 189, 248), "Completed"),
+                AgentState::Failed(_) => (Color::Rgb(239, 68, 68), "Failed"),
+                AgentState::Idle => (Color::Rgb(148, 163, 184), "Idle"),
+            };
+
+            let conf_tag = match agent.confidence {
+                Confidence::Confirmed => "[Confirmed]",
+                Confidence::Inferred => "[Inferred?]",
+                Confidence::Unknown => "[Unknown]",
+            };
+
+            let prefix = if is_selected { "▶ " } else { "  " };
+
+            lines.push(Line::from(vec![
+                Span::styled(prefix, Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
+                Span::styled("● ", Style::default().fg(dot_color)),
+                Span::styled(&agent.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+                Span::raw("  "),
+                Span::styled(status_text, Style::default().fg(dot_color)),
+                Span::styled(format!(" {} ", conf_tag), Style::default().fg(Color::Rgb(100, 116, 139))),
+                Span::styled(agent.formatted_runtime(), Style::default().fg(Color::Rgb(148, 163, 184))),
+            ]));
+
+            lines.push(Line::from(vec![
+                Span::raw("     ↳ "),
+                Span::styled(format!("Branch: {}", agent.worktree_branch), Style::default().fg(Color::Rgb(168, 85, 247))),
+            ]));
+
+            lines.push(Line::from(vec![
+                Span::raw("     ↳ "),
+                Span::styled(format!("Task: {}", agent.target_file_or_task), Style::default().fg(Color::Rgb(148, 163, 184))),
+            ]));
+
+            lines.push(Line::raw(""));
+        }
     }
 
     if is_focused {
@@ -522,7 +547,7 @@ fn draw_help_modal(f: &mut Frame, area: Rect) {
         Line::raw(""),
         Line::from(vec![
             Span::styled("<Tab>           ", Style::default().fg(Color::Yellow)),
-            Span::raw("Cycle active pane (Explorer -> Terminal -> Git -> Agents)"),
+            Span::raw("Cycle active pane (Explorer -> Preview -> Terminal -> Git -> Agents)"),
         ]),
         Line::from(vec![
             Span::styled("<Ctrl-b>        ", Style::default().fg(Color::Yellow)),
@@ -533,12 +558,28 @@ fn draw_help_modal(f: &mut Frame, area: Rect) {
             Span::raw("Open Command Palette"),
         ]),
         Line::from(vec![
+            Span::styled("<Ctrl-a> / a    ", Style::default().fg(Color::Yellow)),
+            Span::raw("Launch coding agent in isolated Git worktree"),
+        ]),
+        Line::from(vec![
             Span::styled("<Ctrl-t>        ", Style::default().fg(Color::Yellow)),
             Span::raw("Open new terminal session tab"),
         ]),
         Line::from(vec![
             Span::styled("<Ctrl-w>        ", Style::default().fg(Color::Yellow)),
-            Span::raw("Close current terminal session"),
+            Span::raw("Close active terminal session tab"),
+        ]),
+        Line::from(vec![
+            Span::styled("Alt+1 .. Alt+9  ", Style::default().fg(Color::Yellow)),
+            Span::raw("Switch directly to Terminal tab 1..9"),
+        ]),
+        Line::from(vec![
+            Span::styled("Alt+Left / Right", Style::default().fg(Color::Yellow)),
+            Span::raw("Cycle Previous / Next Terminal tab (or Ctrl+PgUp / Ctrl+PgDn)"),
+        ]),
+        Line::from(vec![
+            Span::styled("d / m / x       ", Style::default().fg(Color::Yellow)),
+            Span::raw("Agents pane: [d] Diff Review, [m] Merge into main, [x] Discard"),
         ]),
         Line::from(vec![
             Span::styled("j / k           ", Style::default().fg(Color::Yellow)),

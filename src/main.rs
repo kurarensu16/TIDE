@@ -92,6 +92,7 @@ fn main() -> Result<()> {
         // Render frame if dirty signal arrived or frame budget elapsed
         let is_dirty = app.dirty_rx.try_recv().is_ok();
         if is_dirty || elapsed >= frame_duration {
+            app.update_agent_heuristics();
             terminal.draw(|f| ui::draw(f, &mut app))?;
             last_render = Instant::now();
         }
