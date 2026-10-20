@@ -65,6 +65,8 @@ pub struct App {
     pub show_help: bool,
     pub show_command_palette: bool,
     pub show_agent_launch_modal: bool,
+    pub agent_launch_selected_idx: usize,
+    pub agent_launch_modal_area: ratatui::layout::Rect,
     pub show_diff_modal: bool,
     pub diff_modal_content: Option<(String, String)>,
     pub status_message: Option<(String, std::time::Instant)>,
@@ -121,6 +123,8 @@ impl App {
             show_help: false,
             show_command_palette: false,
             show_agent_launch_modal: false,
+            agent_launch_selected_idx: 0,
+            agent_launch_modal_area: ratatui::layout::Rect::default(),
             show_diff_modal: false,
             diff_modal_content: None,
             status_message: None,
@@ -390,6 +394,55 @@ impl App {
     pub fn handle_mouse_event(&mut self, mouse: crossterm::event::MouseEvent) {
         let (x, y) = (mouse.column, mouse.row);
 
+        // Handle clicks on Agent Launch Modal
+        if self.show_agent_launch_modal {
+            if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse.kind {
+                if !self.agent_launch_modal_area.contains(ratatui::layout::Position { x, y }) {
+                    self.show_agent_launch_modal = false;
+                    return;
+                }
+
+                // Check [×] button
+                if y == self.agent_launch_modal_area.y && x >= self.agent_launch_modal_area.right().saturating_sub(4) {
+                    self.show_agent_launch_modal = false;
+                    return;
+                }
+
+                let inner_y = self.agent_launch_modal_area.y + 1;
+                // Option 1 (Antigravity)
+                if y >= inner_y + 2 && y <= inner_y + 4 {
+                    self.agent_launch_selected_idx = 0;
+                    return;
+                }
+                // Option 2 (Claude Code)
+                if y >= inner_y + 5 && y <= inner_y + 7 {
+                    self.agent_launch_selected_idx = 1;
+                    return;
+                }
+                // Option 3 (Worktree Shell)
+                if y >= inner_y + 8 && y <= inner_y + 10 {
+                    self.agent_launch_selected_idx = 2;
+                    return;
+                }
+                // Confirm & Cancel buttons row
+                if y >= self.agent_launch_modal_area.bottom().saturating_sub(3) {
+                    let mid_x = self.agent_launch_modal_area.x + self.agent_launch_modal_area.width / 2;
+                    if x < mid_x {
+                        // Confirm clicked!
+                        match self.agent_launch_selected_idx {
+                            0 => { let _ = self.launch_agent("Antigravity", "agy", &[], "Interactive Coding Agent"); }
+                            1 => { let _ = self.launch_agent("Claude Code", "claude", &[], "Autonomous Agent Session"); }
+                            2 => { let _ = self.launch_agent("Worktree Shell", "powershell.exe", &[], "Isolated Worktree Shell"); }
+                            _ => {}
+                        }
+                    }
+                    self.show_agent_launch_modal = false;
+                    return;
+                }
+            }
+            return;
+        }
+
         match mouse.kind {
             crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
                 // Check splitters for card resizing FIRST before pane content
@@ -434,11 +487,39 @@ impl App {
                 if self.terminal_tabs_area.contains(ratatui::layout::Position { x, y }) {
                     self.active_pane = ActivePane::Terminal;
                     let rel_x = x.saturating_sub(self.terminal_tabs_area.x);
-                    let tab_width = 24; // approximate average tab width
-                    let clicked_tab = (rel_x as usize) / tab_width;
-                    if clicked_tab < self.terminals.len() {
-                        self.active_terminal_idx = clicked_tab;
+
+                    // Check navigation buttons on far right: [◀] [▶]
+                    let right_boundary = self.terminal_tabs_area.width;
+                    if rel_x >= right_boundary.saturating_sub(18) {
+                        if rel_x < right_boundary.saturating_sub(10) {
+                            if !self.terminals.is_empty() {
+                                self.active_terminal_idx = (self.active_terminal_idx + self.terminals.len() - 1) % self.terminals.len();
+                            }
+                        } else {
+                            if !self.terminals.is_empty() {
+                                self.active_terminal_idx = (self.active_terminal_idx + 1) % self.terminals.len();
+                            }
+                        }
+                        return;
                     }
+
+                    // Precise per-tab click testing
+                    let mut current_offset: u16 = 0;
+                    for (i, t) in self.terminals.iter().enumerate() {
+                        let tab_width = 4 + t.title.chars().count() as u16 + 2;
+                        if rel_x >= current_offset && rel_x < current_offset + tab_width {
+                            self.active_terminal_idx = i;
+                            return;
+                        }
+                        current_offset += tab_width + 1;
+                    }
+
+                    // Check [+] button right after the tabs
+                    if rel_x >= current_offset && rel_x <= current_offset + 5 {
+                        let _ = self.spawn_terminal("PowerShell", "powershell.exe", &[]);
+                        return;
+                    }
+
                     return;
                 }
 
@@ -589,16 +670,36 @@ impl App {
         if self.show_agent_launch_modal {
             match key.code {
                 KeyCode::Esc => self.show_agent_launch_modal = false,
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.agent_launch_selected_idx = self.agent_launch_selected_idx.saturating_sub(1);
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    if self.agent_launch_selected_idx < 2 {
+                        self.agent_launch_selected_idx += 1;
+                    }
+                }
                 KeyCode::Char('1') => {
-                    let _ = self.launch_agent("Antigravity", "agy", &[], "Interactive Coding Agent");
-                    self.show_agent_launch_modal = false;
+                    self.agent_launch_selected_idx = 0;
                 }
                 KeyCode::Char('2') => {
-                    let _ = self.launch_agent("Claude Code", "claude", &[], "Autonomous Agent Session");
-                    self.show_agent_launch_modal = false;
+                    self.agent_launch_selected_idx = 1;
                 }
                 KeyCode::Char('3') => {
-                    let _ = self.launch_agent("Worktree Shell", "powershell.exe", &[], "Isolated Worktree Shell");
+                    self.agent_launch_selected_idx = 2;
+                }
+                KeyCode::Enter => {
+                    match self.agent_launch_selected_idx {
+                        0 => {
+                            let _ = self.launch_agent("Antigravity", "agy", &[], "Interactive Coding Agent");
+                        }
+                        1 => {
+                            let _ = self.launch_agent("Claude Code", "claude", &[], "Autonomous Agent Session");
+                        }
+                        2 => {
+                            let _ = self.launch_agent("Worktree Shell", "powershell.exe", &[], "Isolated Worktree Shell");
+                        }
+                        _ => {}
+                    }
                     self.show_agent_launch_modal = false;
                 }
                 _ => {}
@@ -680,11 +781,51 @@ impl App {
                 self.cycle_active_pane();
                 return;
             }
+            KeyCode::F(7) => {
+                if !self.terminals.is_empty() {
+                    self.active_terminal_idx = (self.active_terminal_idx + self.terminals.len() - 1) % self.terminals.len();
+                    self.status_message = Some((format!("Terminal Tab: {}", self.terminals[self.active_terminal_idx].title), std::time::Instant::now()));
+                }
+                return;
+            }
+            KeyCode::F(8) => {
+                if !self.terminals.is_empty() {
+                    self.active_terminal_idx = (self.active_terminal_idx + 1) % self.terminals.len();
+                    self.status_message = Some((format!("Terminal Tab: {}", self.terminals[self.active_terminal_idx].title), std::time::Instant::now()));
+                }
+                return;
+            }
             KeyCode::F(11) => {
                 self.is_maximized = !self.is_maximized;
                 return;
             }
             _ => {}
+        }
+
+        // Universal Terminal Tab Switching: Ctrl+Tab, Ctrl+Shift+Tab, Alt+1..9
+        if key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::Tab || key.code == KeyCode::BackTab) {
+            if !self.terminals.is_empty() {
+                if key.modifiers.contains(KeyModifiers::SHIFT) || key.code == KeyCode::BackTab {
+                    self.active_terminal_idx = (self.active_terminal_idx + self.terminals.len() - 1) % self.terminals.len();
+                } else {
+                    self.active_terminal_idx = (self.active_terminal_idx + 1) % self.terminals.len();
+                }
+                self.status_message = Some((format!("Terminal Tab: {}", self.terminals[self.active_terminal_idx].title), std::time::Instant::now()));
+            }
+            return;
+        }
+
+        if key.modifiers.contains(KeyModifiers::ALT) {
+            if let KeyCode::Char(c) = key.code {
+                if let Some(d) = c.to_digit(10) {
+                    let target = (d as usize).saturating_sub(1);
+                    if target < self.terminals.len() {
+                        self.active_terminal_idx = target;
+                        self.status_message = Some((format!("Terminal Tab: {}", self.terminals[target].title), std::time::Instant::now()));
+                        return;
+                    }
+                }
+            }
         }
 
         // When NOT inside Terminal, hotkeys like Ctrl+p, Ctrl+a, and Tab are active

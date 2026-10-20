@@ -14,7 +14,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{
         Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Scrollbar,
-        ScrollbarOrientation, ScrollbarState, Tabs, Wrap,
+        ScrollbarOrientation, ScrollbarState, Wrap,
     },
     Frame,
 };
@@ -45,7 +45,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     } else if app.show_command_palette {
         draw_command_palette_modal(f, size);
     } else if app.show_agent_launch_modal {
-        draw_agent_launch_modal(f, size);
+        draw_agent_launch_modal(f, app, size);
     } else if app.show_diff_modal {
         draw_diff_modal(f, app, size);
     }
@@ -93,12 +93,12 @@ fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {
     ];
 
     let right_spans = vec![
-        Span::styled("F1", Style::default().fg(Color::Rgb(56, 189, 248))),
-        Span::raw(" Help │ "),
+        Span::styled("F7/8", Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::raw(" Tabs │ "),
         Span::styled("F6", Style::default().fg(Color::Yellow)),
         Span::raw(" Pane │ "),
-        Span::styled("<C-b>", Style::default().fg(Color::Rgb(56, 189, 248))),
-        Span::raw(" Esc │ "),
+        Span::styled("F1", Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::raw(" Help │ "),
         Span::styled("<C-q>", Style::default().fg(Color::Rgb(239, 68, 68))),
         Span::raw(" Quit"),
     ];
@@ -439,31 +439,39 @@ fn draw_terminal_pane(f: &mut Frame, app: &mut App, area: Rect) {
 
     app.terminal_tabs_area = chunks[0];
 
-    // Tab bar
-    let tab_titles: Vec<Line> = app
-        .terminals
-        .iter()
-        .enumerate()
-        .map(|(i, t)| {
-            let is_active = i == app.active_terminal_idx;
-            let style = if is_active {
-                Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(Color::Rgb(148, 163, 184))
-            };
-            let indicator = if is_active { "● " } else { "○ " };
-            Line::from(vec![
-                Span::styled(indicator, Style::default().fg(if is_active { Color::Rgb(34, 197, 94) } else { Color::Rgb(100, 116, 139) })),
-                Span::styled(format!("{}: {}", i + 1, t.title), style),
-                Span::raw("  "),
-            ])
-        })
-        .collect();
+    // Tab bar with interactive tabs, [+] button, and [F7 ◀] [▶ F8] navigation controls
+    let tab_bar_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(20), Constraint::Length(22)])
+        .split(chunks[0]);
 
-    let tabs = Tabs::new(tab_titles)
-        .select(app.active_terminal_idx)
-        .highlight_style(Style::default().fg(Color::Rgb(56, 189, 248)));
-    f.render_widget(tabs, chunks[0]);
+    let mut tab_spans = Vec::new();
+    for (i, t) in app.terminals.iter().enumerate() {
+        let is_active = i == app.active_terminal_idx;
+        let indicator = if is_active { "● " } else { "○ " };
+        let dot_color = if is_active { Color::Rgb(34, 197, 94) } else { Color::Rgb(100, 116, 139) };
+        let text_style = if is_active {
+            Style::default().bg(Color::Rgb(30, 58, 138)).fg(Color::White).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Rgb(148, 163, 184))
+        };
+
+        tab_spans.push(Span::styled(format!(" {} ", indicator), Style::default().fg(dot_color)));
+        tab_spans.push(Span::styled(format!("{}: {} ", i + 1, t.title), text_style));
+        tab_spans.push(Span::styled(" │", Style::default().fg(Color::Rgb(51, 65, 85))));
+    }
+
+    // [+] New tab button
+    tab_spans.push(Span::styled(" [+] ", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)));
+
+    let right_tab_controls = vec![
+        Span::styled("[F7 ◀] ", Style::default().fg(Color::Yellow)),
+        Span::styled("[▶ F8]", Style::default().fg(Color::Yellow)),
+        Span::raw(" "),
+    ];
+
+    f.render_widget(Paragraph::new(Line::from(tab_spans)), tab_bar_chunks[0]);
+    f.render_widget(Paragraph::new(Line::from(right_tab_controls)).alignment(Alignment::Right), tab_bar_chunks[1]);
 
     // Render VT100 screen buffer
     if let Some(session) = app.terminals.get(app.active_terminal_idx) {
@@ -817,43 +825,135 @@ fn convert_vt100_color(color: vt100::Color) -> Option<Color> {
     }
 }
 
-fn draw_agent_launch_modal(f: &mut Frame, area: Rect) {
-    let popup_area = centered_rect(58, 48, area);
+fn draw_agent_launch_modal(f: &mut Frame, app: &mut App, area: Rect) {
+    let popup_area = centered_rect(68, 62, area);
+    app.agent_launch_modal_area = popup_area;
     f.render_widget(Clear, popup_area);
 
-    let options = vec![
-        Line::styled("Launch New Coding-Agent in Isolated Git Worktree", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
-        Line::raw(""),
-        Line::from(vec![
-            Span::styled("1. ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-            Span::styled("Antigravity CLI (agy)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            Span::raw(" - Google Deepmind Advanced Coding Agent"),
-        ]),
-        Line::from(vec![
-            Span::styled("2. ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-            Span::styled("Claude Code CLI (claude)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            Span::raw(" - Anthropic Autonomous Agent CLI"),
-        ]),
-        Line::from(vec![
-            Span::styled("3. ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-            Span::styled("Isolated Worktree Shell (powershell)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            Span::raw(" - Custom manual worktree session"),
-        ]),
-        Line::raw(""),
-        Line::styled("• Dedicated branch & worktree (.tide/worktrees/<id>) created automatically.", Style::default().fg(Color::Rgb(148, 163, 184))),
-        Line::styled("• All processes bound to Windows Job Object for clean teardown.", Style::default().fg(Color::Rgb(148, 163, 184))),
-        Line::raw(""),
-        Line::styled("Press 1, 2, or 3 to launch, or Esc to cancel.", Style::default().fg(Color::Rgb(100, 116, 139))),
-    ];
-
-    let block = Block::default()
-        .title(" 🤖 Launch Agent Session ")
+    let outer_block = Block::default()
+        .title(" 🤖 Launch Agent Session [×] ")
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Rgb(56, 189, 248)));
 
-    let p = Paragraph::new(options).block(block).wrap(Wrap { trim: true });
-    f.render_widget(p, popup_area);
+    let inner = outer_block.inner(popup_area);
+    f.render_widget(outer_block, popup_area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(2),  // Title and subtitle
+            Constraint::Min(0),     // Agent options cards
+            Constraint::Length(2),  // Worktree & teardown info
+            Constraint::Length(2),  // Confirm & Cancel buttons
+        ])
+        .split(inner);
+
+    // Header
+    let header_lines = vec![
+        Line::styled("Launch New Coding-Agent in Isolated Git Worktree", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
+        Line::styled("Select an agent below and confirm to start an isolated session:", Style::default().fg(Color::Rgb(148, 163, 184))),
+    ];
+    f.render_widget(Paragraph::new(header_lines), chunks[0]);
+
+    // Agent options
+    let agents_data = [
+        (
+            "1",
+            "Antigravity CLI (agy)",
+            "Google Deepmind Advanced Coding Agent",
+            "[ Autonomous / DeepMind ]",
+            Color::Rgb(56, 189, 248),
+        ),
+        (
+            "2",
+            "Claude Code CLI (claude)",
+            "Anthropic Autonomous Agent CLI",
+            "[ CLI Agent / Anthropic ]",
+            Color::Rgb(249, 115, 22),
+        ),
+        (
+            "3",
+            "Isolated Worktree Shell (powershell)",
+            "Custom manual worktree session",
+            "[ Isolated Worktree ]",
+            Color::Rgb(168, 85, 247),
+        ),
+    ];
+
+    let mut option_lines = Vec::new();
+    for (i, (num, title, desc, tag, tag_color)) in agents_data.iter().enumerate() {
+        let is_selected = app.agent_launch_selected_idx == i;
+
+        if is_selected {
+            // Selected / Panned-to styling: rich background highlight, cyan pointer, bold text
+            let row1_spans = vec![
+                Span::styled(" ▶ ", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
+                Span::styled(format!(" [{}] ", num), Style::default().bg(Color::Rgb(56, 189, 248)).fg(Color::Black).add_modifier(Modifier::BOLD)),
+                Span::styled(format!(" {} ", title), Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+                Span::styled(format!(" {} ", tag), Style::default().fg(*tag_color).add_modifier(Modifier::BOLD)),
+                Span::styled(" [ SELECTED ]", Style::default().bg(Color::Rgb(34, 197, 94)).fg(Color::Black).add_modifier(Modifier::BOLD)),
+            ];
+            let row2_spans = vec![
+                Span::raw("     ↳ "),
+                Span::styled(*desc, Style::default().fg(Color::Rgb(226, 232, 240)).add_modifier(Modifier::ITALIC)),
+            ];
+
+            option_lines.push(Line::from(row1_spans).style(Style::default().bg(Color::Rgb(30, 58, 138))));
+            option_lines.push(Line::from(row2_spans).style(Style::default().bg(Color::Rgb(30, 58, 138))));
+        } else {
+            // Unselected styling
+            let row1_spans = vec![
+                Span::raw("   "),
+                Span::styled(format!(" {}. ", num), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(format!("{} ", title), Style::default().fg(Color::Rgb(226, 232, 240)).add_modifier(Modifier::BOLD)),
+                Span::styled(format!("{} ", tag), Style::default().fg(Color::Rgb(100, 116, 139))),
+            ];
+            let row2_spans = vec![
+                Span::raw("     ↳ "),
+                Span::styled(*desc, Style::default().fg(Color::Rgb(148, 163, 184))),
+            ];
+
+            option_lines.push(Line::from(row1_spans));
+            option_lines.push(Line::from(row2_spans));
+        }
+
+        option_lines.push(Line::raw(""));
+    }
+
+    f.render_widget(Paragraph::new(option_lines), chunks[1]);
+
+    // System info
+    let info_lines = vec![
+        Line::styled("• Dedicated branch & worktree (.tide/worktrees/<id>) created automatically.", Style::default().fg(Color::Rgb(100, 116, 139))),
+        Line::styled("• All processes bound to Windows Job Object for clean teardown.", Style::default().fg(Color::Rgb(100, 116, 139))),
+    ];
+    f.render_widget(Paragraph::new(info_lines), chunks[2]);
+
+    // Action Buttons: [ ✔ Confirm & Launch ] and [ ✖ Cancel ]
+    let selected_agent_name = match app.agent_launch_selected_idx {
+        0 => "Antigravity",
+        1 => "Claude Code",
+        _ => "Worktree Shell",
+    };
+
+    let button_spans = vec![
+        Span::styled(
+            format!("  [ ✔ Launch {} (Enter) ]  ", selected_agent_name),
+            Style::default().bg(Color::Rgb(34, 197, 94)).fg(Color::Black).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("   "),
+        Span::styled(
+            "  [ ✖ Cancel (Esc) ]  ",
+            Style::default().bg(Color::Rgb(51, 65, 85)).fg(Color::White).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("   "),
+        Span::styled(
+            "↑/↓ or j/k: Pan/Highlight │ 1-3: Quick Pick",
+            Style::default().fg(Color::Rgb(148, 163, 184)),
+        ),
+    ];
+    f.render_widget(Paragraph::new(Line::from(button_spans)).alignment(Alignment::Center), chunks[3]);
 }
 
 fn draw_diff_modal(f: &mut Frame, app: &App, area: Rect) {
