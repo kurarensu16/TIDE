@@ -12,7 +12,10 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Tabs, Wrap},
+    widgets::{
+        Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState, Tabs, Wrap,
+    },
     Frame,
 };
 
@@ -106,6 +109,8 @@ fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn draw_body(f: &mut Frame, app: &mut App, area: Rect) {
+    app.body_area = area;
+
     if app.is_maximized {
         app.explorer_area = Rect::default();
         app.preview_area = Rect::default();
@@ -142,11 +147,11 @@ fn draw_body(f: &mut Frame, app: &mut App, area: Rect) {
     let mut col_constraints = Vec::new();
 
     if app.show_explorer {
-        col_constraints.push(Constraint::Percentage(20));
+        col_constraints.push(Constraint::Percentage(app.left_col_pct.clamp(10, 50)));
     }
-    col_constraints.push(Constraint::Min(30)); // Center column takes remaining
+    col_constraints.push(Constraint::Min(25)); // Center column takes remaining
     if has_right {
-        col_constraints.push(Constraint::Percentage(25));
+        col_constraints.push(Constraint::Percentage(app.right_col_pct.clamp(12, 50)));
     }
 
     let col_chunks = Layout::default()
@@ -168,9 +173,13 @@ fn draw_body(f: &mut Frame, app: &mut App, area: Rect) {
 
     // Center column: preview + terminal
     if app.show_preview {
+        let center_pct = app.center_split_pct.clamp(15, 85);
         let center_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+            .constraints([
+                Constraint::Percentage(center_pct),
+                Constraint::Percentage(100 - center_pct),
+            ])
             .split(center_area);
 
         app.preview_area = center_chunks[0];
@@ -188,9 +197,13 @@ fn draw_body(f: &mut Frame, app: &mut App, area: Rect) {
     if has_right {
         let right_area = col_chunks[chunk_idx];
         if app.show_git && app.show_agents {
+            let right_pct = app.right_split_pct.clamp(15, 85);
             let right_chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
+                .constraints([
+                    Constraint::Percentage(right_pct),
+                    Constraint::Percentage(100 - right_pct),
+                ])
                 .split(right_area);
 
             app.git_area = right_chunks[0];
@@ -267,22 +280,37 @@ fn draw_file_preview_pane(f: &mut Frame, app: &App, area: Rect) {
 
     f.render_widget(Paragraph::new(rendered_lines), chunks[0]);
 
+    // Render visual scrollbar on code preview
+    let total_lines = lines.len();
+    if total_lines > view_height {
+        let max_scroll = total_lines.saturating_sub(view_height);
+        let mut scrollbar_state = ScrollbarState::new(max_scroll).position(scroll.min(max_scroll));
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("█")
+            .style(Style::default().fg(Color::Rgb(56, 189, 248)));
+        f.render_stateful_widget(scrollbar, chunks[0], &mut scrollbar_state);
+    }
+
     // Bottom buffer status line
-    let (mode_text, mode_color, mode_desc) = match app.editor_mode {
-        crate::app::EditorMode::Normal => (" NORMAL ", Color::Rgb(34, 197, 94), "[i] Edit  [e] VS Code  "),
-        crate::app::EditorMode::Insert => (" INSERT ", Color::Rgb(56, 189, 248), "Ctrl+s: Save  Esc: Normal  "),
+    let mode_badge = if app.editor_dirty {
+        Span::styled(" MODIFIED ", Style::default().bg(Color::Rgb(245, 158, 11)).fg(Color::Black).add_modifier(Modifier::BOLD))
+    } else {
+        Span::styled(" EDIT ", Style::default().bg(Color::Rgb(56, 189, 248)).fg(Color::Black).add_modifier(Modifier::BOLD))
     };
-    let mode_span = Span::styled(mode_text, Style::default().bg(mode_color).fg(Color::Black).add_modifier(Modifier::BOLD));
     let name_span = Span::styled(format!(" {} ", app.preview_content.as_ref().map(|(n, _)| n.as_str()).unwrap_or("")), Style::default().fg(Color::White));
-    let desc_span = Span::styled(mode_desc, Style::default().fg(Color::Rgb(148, 163, 184)));
+    let desc_span = Span::styled("Ctrl+s: Save │ Ctrl+e: VS Code │ Esc: Explorer  ", Style::default().fg(Color::Rgb(148, 163, 184)));
     let pos_span = Span::styled(format!("Ln {}, Col {} │ utf-8 ", app.editor_cursor.0 + 1, app.editor_cursor.1 + 1), Style::default().fg(Color::Rgb(148, 163, 184)));
 
     let status_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(25), Constraint::Length(40)])
+        .constraints([Constraint::Min(35), Constraint::Length(30)])
         .split(chunks[1]);
 
-    f.render_widget(Paragraph::new(Line::from(vec![mode_span, name_span, desc_span])), status_chunks[0]);
+    f.render_widget(Paragraph::new(Line::from(vec![mode_badge, name_span, desc_span])), status_chunks[0]);
     f.render_widget(Paragraph::new(Line::from(pos_span)).alignment(Alignment::Right), status_chunks[1]);
 
     // Active Cursor positioning
@@ -366,8 +394,25 @@ fn draw_explorer_pane(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(border_color));
 
+    let inner = block.inner(area);
     let list = List::new(items).block(block);
     f.render_widget(list, area);
+
+    // Render Explorer scrollbar if entries exceed area height
+    let total_entries = app.explorer.entries.len();
+    let view_height = inner.height as usize;
+    if total_entries > view_height && view_height > 0 {
+        let max_scroll = total_entries.saturating_sub(view_height);
+        let mut scrollbar_state = ScrollbarState::new(max_scroll).position(app.explorer.selected.min(max_scroll));
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("█")
+            .style(Style::default().fg(Color::Rgb(100, 116, 139)));
+        f.render_stateful_widget(scrollbar, inner, &mut scrollbar_state);
+    }
 }
 
 fn draw_terminal_pane(f: &mut Frame, app: &mut App, area: Rect) {
@@ -663,16 +708,32 @@ fn draw_help_modal(f: &mut Frame, area: Rect) {
             Span::raw("Maximize / restore active pane to full screen"),
         ]),
         Line::from(vec![
+            Span::styled("Mouse Drag      ", Style::default().fg(Color::Yellow)),
+            Span::raw("Drag pane borders to dynamically resize cards (columns & rows)"),
+        ]),
+        Line::from(vec![
+            Span::styled("Alt+[ / Alt+]   ", Style::default().fg(Color::Yellow)),
+            Span::raw("Resize Explorer column width"),
+        ]),
+        Line::from(vec![
+            Span::styled("Alt+- / Alt+=   ", Style::default().fg(Color::Yellow)),
+            Span::raw("Resize File Preview vs Terminal split height"),
+        ]),
+        Line::from(vec![
+            Span::styled("Alt+{ / Alt+}   ", Style::default().fg(Color::Yellow)),
+            Span::raw("Resize Right panel (Git & Agents) column width"),
+        ]),
+        Line::from(vec![
             Span::styled("<Ctrl-b>        ", Style::default().fg(Color::Yellow)),
             Span::raw("Escape child terminal focus and return to TIDE controls"),
         ]),
         Line::from(vec![
-            Span::styled("i / Ctrl+s / Esc", Style::default().fg(Color::Yellow)),
-            Span::raw("Code Preview: [i] enter edit mode, [Ctrl+s] save to disk, [Esc] exit edit"),
+            Span::styled("Type / Ctrl+s   ", Style::default().fg(Color::Yellow)),
+            Span::raw("Code Preview: type directly to edit buffer, [Ctrl+s] save to disk"),
         ]),
         Line::from(vec![
-            Span::styled("e               ", Style::default().fg(Color::Yellow)),
-            Span::raw("Open current file in VS Code / external editor"),
+            Span::styled("Ctrl+e / Ctrl+o ", Style::default().fg(Color::Yellow)),
+            Span::raw("Open current file in VS Code"),
         ]),
         Line::from(vec![
             Span::styled("Alt+1 .. Alt+9  ", Style::default().fg(Color::Yellow)),
