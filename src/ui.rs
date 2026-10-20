@@ -1,0 +1,704 @@
+//! UI Rendering for TIDE using Ratatui.
+//!
+//! Recreates the sleek, high-density terminal workspace layout from TIDE.png:
+//! - Top Header: branding, workspace context, global shortcuts
+//! - Left Pane: Workspace File Tree Explorer
+//! - Center Pane: Tabbed PTY Terminal & VT100 Emulator Grid
+//! - Right Top Pane: Git status, branch, and commit log
+//! - Right Bottom Pane: Active Agent Sessions with confidence tracking
+//! - Bottom Status Bar: Path, active shell, cursor position, agent counts
+
+use ratatui::{
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Tabs, Wrap},
+    Frame,
+};
+
+use crate::app::{ActivePane, App};
+use crate::agents::{AgentState, Confidence};
+
+pub fn draw(f: &mut Frame, app: &mut App) {
+    let size = f.area();
+
+    // Vertical layout: Header (1), Main Body (Min 0), Status Bar (1)
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Min(0),
+            Constraint::Length(1),
+        ])
+        .split(size);
+
+    draw_header(f, app, chunks[0]);
+    draw_body(f, app, chunks[1]);
+    draw_status_bar(f, app, chunks[2]);
+
+    // Modal overlays (if active)
+    if app.show_help {
+        draw_help_modal(f, size);
+    } else if app.show_command_palette {
+        draw_command_palette_modal(f, size);
+    } else if app.show_agent_launch_modal {
+        draw_agent_launch_modal(f, size);
+    } else if app.show_diff_modal {
+        draw_diff_modal(f, app, size);
+    }
+}
+
+fn draw_header(f: &mut Frame, app: &App, area: Rect) {
+    let header_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(40), Constraint::Length(60)])
+        .split(area);
+
+    let left_spans = vec![
+        Span::styled(" ● ", Style::default().fg(Color::Rgb(34, 197, 94))),
+        Span::styled("TIDE", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Span::raw("   "),
+        Span::styled("📁 ", Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::styled(&app.workspace_name, Style::default().fg(Color::White)),
+        Span::raw("   "),
+        Span::styled(" ", Style::default().fg(Color::Rgb(168, 85, 247))),
+        Span::styled(&app.git_info.branch, Style::default().fg(Color::Rgb(168, 85, 247))),
+    ];
+
+    let right_spans = vec![
+        Span::styled("F1", Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::raw(" Help │ "),
+        Span::styled("<C-p>", Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::raw(" Command Palette │ "),
+        Span::styled("<Tab>", Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::raw(" Switch Pane │ "),
+        Span::styled("<C-q>", Style::default().fg(Color::Rgb(239, 68, 68))),
+        Span::raw(" Quit"),
+    ];
+
+    f.render_widget(Paragraph::new(Line::from(left_spans)), header_chunks[0]);
+    f.render_widget(
+        Paragraph::new(Line::from(right_spans)).alignment(Alignment::Right),
+        header_chunks[1],
+    );
+}
+
+fn draw_body(f: &mut Frame, app: &mut App, area: Rect) {
+    // 3-column layout: Left (Explorer), Center (Terminal), Right (Git & Agents)
+    let body_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(20),
+            Constraint::Percentage(55),
+            Constraint::Percentage(25),
+        ])
+        .split(area);
+
+    draw_explorer_pane(f, app, body_chunks[0]);
+
+    // Split Center column vertically: Top (File Preview / Code), Bottom (Terminal)
+    let center_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(55),
+            Constraint::Percentage(45),
+        ])
+        .split(body_chunks[1]);
+
+    draw_file_preview_pane(f, app, center_chunks[0]);
+    draw_terminal_pane(f, app, center_chunks[1]);
+
+    draw_right_column(f, app, body_chunks[2]);
+}
+
+fn draw_file_preview_pane(f: &mut Frame, app: &App, area: Rect) {
+    let is_focused = app.active_pane == ActivePane::FilePreview;
+    let border_color = if is_focused {
+        Color::Rgb(56, 189, 248)
+    } else {
+        Color::Rgb(30, 41, 59)
+    };
+
+    let (title, lines) = match &app.preview_content {
+        Some((name, lines)) => (format!(" 📄 {} ", name), lines.as_slice()),
+        None => (" 📄 File Preview ".to_string(), [].as_slice()),
+    };
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(border_color));
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    if lines.is_empty() {
+        let empty_msg = vec![
+            Line::raw(""),
+            Line::styled("  Select a file in Explorer (j/k) to preview its contents.", Style::default().fg(Color::Rgb(100, 116, 139))),
+        ];
+        f.render_widget(Paragraph::new(empty_msg), inner);
+        return;
+    }
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(1)])
+        .split(inner);
+
+    let view_height = chunks[0].height as usize;
+    let scroll = app.preview_scroll;
+    let visible_lines = lines.iter().skip(scroll).take(view_height);
+
+    let mut rendered_lines = Vec::new();
+    for (idx, line) in visible_lines.enumerate() {
+        let line_num = scroll + idx + 1;
+        let mut spans = vec![
+            Span::styled(format!("{:>4} │ ", line_num), Style::default().fg(Color::Rgb(100, 116, 139))),
+        ];
+
+        spans.extend(highlight_code_line(line));
+        rendered_lines.push(Line::from(spans));
+    }
+
+    f.render_widget(Paragraph::new(rendered_lines), chunks[0]);
+
+    // Bottom buffer status line (matching TIDE.png: NORMAL main.rs utf-8 Ln 1, Col 1)
+    let current_line = (scroll + 1).min(lines.len());
+    let mode_span = Span::styled(" NORMAL ", Style::default().bg(Color::Rgb(34, 197, 94)).fg(Color::Black).add_modifier(Modifier::BOLD));
+    let name_span = Span::styled(format!(" {} ", app.preview_content.as_ref().map(|(n, _)| n.as_str()).unwrap_or("")), Style::default().fg(Color::White));
+    let pos_span = Span::styled(format!("utf-8  Ln {}, Total {} ", current_line, lines.len()), Style::default().fg(Color::Rgb(148, 163, 184)));
+
+    let status_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(20), Constraint::Length(30)])
+        .split(chunks[1]);
+
+    f.render_widget(Paragraph::new(Line::from(vec![mode_span, name_span])), status_chunks[0]);
+    f.render_widget(Paragraph::new(Line::from(pos_span)).alignment(Alignment::Right), status_chunks[1]);
+}
+
+fn highlight_code_line(line: &str) -> Vec<Span<'static>> {
+    if line.trim_start().starts_with("//") || line.trim_start().starts_with("#") {
+        return vec![Span::styled(line.to_string(), Style::default().fg(Color::Rgb(100, 116, 139)).add_modifier(Modifier::ITALIC))];
+    }
+
+    let mut spans = Vec::new();
+    let words = line.split_inclusive(|c: char| !c.is_alphanumeric() && c != '_');
+    for word in words {
+        let trimmed = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '_');
+        let style = match trimmed {
+            "fn" | "let" | "pub" | "mut" | "struct" | "enum" | "impl" | "use" | "mod" | "match" | "return" | "async" | "trait" | "type" | "const" => {
+                Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)
+            }
+            "Self" | "Option" | "Result" | "String" | "Vec" | "bool" | "u8" | "u16" | "u32" | "u64" | "usize" | "i32" | "i64" => {
+                Style::default().fg(Color::Rgb(234, 179, 8))
+            }
+            "true" | "false" | "Some" | "None" | "Ok" | "Err" => {
+                Style::default().fg(Color::Rgb(244, 63, 94))
+            }
+            _ => {
+                if word.contains('"') {
+                    Style::default().fg(Color::Rgb(34, 197, 94))
+                } else {
+                    Style::default().fg(Color::Rgb(226, 232, 240))
+                }
+            }
+        };
+        spans.push(Span::styled(word.to_string(), style));
+    }
+    spans
+}
+
+fn draw_explorer_pane(f: &mut Frame, app: &App, area: Rect) {
+    let is_focused = app.active_pane == ActivePane::Explorer;
+    let border_color = if is_focused {
+        Color::Rgb(56, 189, 248)
+    } else {
+        Color::Rgb(30, 41, 59)
+    };
+
+    let items: Vec<ListItem> = app
+        .explorer
+        .entries
+        .iter()
+        .enumerate()
+        .map(|(i, entry)| {
+            let indent = "  ".repeat(entry.depth);
+            let icon = entry.icon();
+            let is_selected = i == app.explorer.selected;
+
+            let line_style = if is_selected {
+                Style::default()
+                    .bg(Color::Rgb(30, 58, 138))
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
+            } else if entry.is_dir {
+                Style::default().fg(Color::Rgb(148, 163, 184))
+            } else {
+                Style::default().fg(Color::Rgb(226, 232, 240))
+            };
+
+            ListItem::new(format!("{}{}{}", indent, icon, entry.name)).style(line_style)
+        })
+        .collect();
+
+    let block = Block::default()
+        .title(" 📁 Explorer ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(border_color));
+
+    let list = List::new(items).block(block);
+    f.render_widget(list, area);
+}
+
+fn draw_terminal_pane(f: &mut Frame, app: &mut App, area: Rect) {
+    let is_focused = app.active_pane == ActivePane::Terminal;
+    let border_color = if is_focused {
+        Color::Rgb(56, 189, 248)
+    } else {
+        Color::Rgb(30, 41, 59)
+    };
+
+    // Inner layout: Tabs (1) + Terminal Screen (remaining)
+    let term_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(border_color));
+    
+    let inner_area = term_block.inner(area);
+    f.render_widget(term_block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .split(inner_area);
+
+    // Tab bar
+    let tab_titles: Vec<Line> = app
+        .terminals
+        .iter()
+        .enumerate()
+        .map(|(i, t)| {
+            let style = if i == app.active_terminal_idx {
+                Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Rgb(148, 163, 184))
+            };
+            Line::from(vec![
+                Span::raw("💻 "),
+                Span::styled(format!("Terminal {} ({})", i + 1, t.title), style),
+                Span::raw(" "),
+            ])
+        })
+        .collect();
+
+    let tabs = Tabs::new(tab_titles)
+        .select(app.active_terminal_idx)
+        .highlight_style(Style::default().fg(Color::Rgb(56, 189, 248)));
+    f.render_widget(tabs, chunks[0]);
+
+    // Render VT100 screen buffer
+    if let Some(session) = app.terminals.get(app.active_terminal_idx) {
+        let screen_area = chunks[1];
+        
+        // Dynamically resize PTY to match current pane dimensions
+        if screen_area.height > 0 && screen_area.width > 0 {
+            session.resize(screen_area.height, screen_area.width);
+        }
+
+        if let Ok(parser) = session.parser.lock() {
+            let screen = parser.screen();
+            let mut lines: Vec<Line> = Vec::new();
+
+            for row in 0..screen_area.height {
+                let mut spans: Vec<Span> = Vec::new();
+                for col in 0..screen_area.width {
+                    let cell = screen.cell(row, col);
+                    if let Some(cell) = cell {
+                        let ch = cell.contents();
+                        let text = if ch.is_empty() { " " } else { &ch };
+                        
+                        let fg = convert_vt100_color(cell.fgcolor());
+                        let bg = convert_vt100_color(cell.bgcolor());
+
+                        let mut style = Style::default();
+                        if let Some(c) = fg { style = style.fg(c); }
+                        if let Some(c) = bg { style = style.bg(c); }
+                        if cell.bold() { style = style.add_modifier(Modifier::BOLD); }
+                        if cell.italic() { style = style.add_modifier(Modifier::ITALIC); }
+                        if cell.underline() { style = style.add_modifier(Modifier::UNDERLINED); }
+
+                        spans.push(Span::styled(text.to_string(), style));
+                    } else {
+                        spans.push(Span::raw(" "));
+                    }
+                }
+                lines.push(Line::from(spans));
+            }
+
+            f.render_widget(Paragraph::new(lines), screen_area);
+
+            // Cursor placement
+            if is_focused && !screen.hide_cursor() {
+                let (c_row, c_col) = screen.cursor_position();
+                if c_row < screen_area.height && c_col < screen_area.width {
+                    f.set_cursor_position((screen_area.x + c_col, screen_area.y + c_row));
+                }
+            }
+        }
+    }
+}
+
+fn draw_right_column(f: &mut Frame, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
+        .split(area);
+
+    draw_git_pane(f, app, chunks[0]);
+    draw_agents_pane(f, app, chunks[1]);
+}
+
+fn draw_git_pane(f: &mut Frame, app: &App, area: Rect) {
+    let is_focused = app.active_pane == ActivePane::Git;
+    let border_color = if is_focused {
+        Color::Rgb(56, 189, 248)
+    } else {
+        Color::Rgb(30, 41, 59)
+    };
+
+    let block = Block::default()
+        .title(" 🌿 Git ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(border_color));
+
+    let mut lines = vec![
+        Line::from(vec![
+            Span::styled(" ", Style::default().fg(Color::Rgb(168, 85, 247))),
+            Span::styled(&app.git_info.branch, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        ]),
+    ];
+
+    if app.git_info.is_clean {
+        lines.push(Line::from(vec![
+            Span::styled("◆ ", Style::default().fg(Color::Rgb(34, 197, 94))),
+            Span::styled("Clean working tree", Style::default().fg(Color::Rgb(148, 163, 184))),
+        ]));
+    } else {
+        lines.push(Line::from(vec![
+            Span::styled("◆ ", Style::default().fg(Color::Rgb(234, 179, 8))),
+            Span::styled(format!("{} modified files", app.git_info.changed_files.len()), Style::default().fg(Color::Rgb(234, 179, 8))),
+        ]));
+    }
+
+    lines.push(Line::raw(""));
+    lines.push(Line::styled("Recent commits", Style::default().fg(Color::Rgb(148, 163, 184)).add_modifier(Modifier::UNDERLINED)));
+
+    for commit in &app.git_info.recent_commits {
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", commit.hash), Style::default().fg(Color::Rgb(56, 189, 248))),
+            Span::styled(commit.message.clone(), Style::default().fg(Color::Rgb(226, 232, 240))),
+            Span::styled(format!(" ({})", commit.relative_time), Style::default().fg(Color::Rgb(100, 116, 139))),
+        ]));
+    }
+
+    let p = Paragraph::new(lines).block(block).wrap(Wrap { trim: true });
+    f.render_widget(p, area);
+}
+
+fn draw_agents_pane(f: &mut Frame, app: &App, area: Rect) {
+    let is_focused = app.active_pane == ActivePane::Agents;
+    let border_color = if is_focused {
+        Color::Rgb(56, 189, 248)
+    } else {
+        Color::Rgb(30, 41, 59)
+    };
+
+    let title = format!(" 🤖 Agents ({} running) ", app.agents.len());
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(border_color));
+
+    let mut lines = Vec::new();
+
+    for (i, agent) in app.agents.iter().enumerate() {
+        let is_selected = is_focused && i == app.active_agent_idx;
+        let (dot_color, status_text) = match &agent.state {
+            AgentState::Running => (Color::Rgb(34, 197, 94), "Running"),
+            AgentState::WaitingForInput => (Color::Rgb(234, 179, 8), "Waiting for input"),
+            AgentState::Completed => (Color::Rgb(56, 189, 248), "Completed"),
+            AgentState::Failed(_) => (Color::Rgb(239, 68, 68), "Failed"),
+            AgentState::Idle => (Color::Rgb(148, 163, 184), "Idle"),
+        };
+
+        let conf_tag = match agent.confidence {
+            Confidence::Confirmed => "[Confirmed]",
+            Confidence::Inferred => "[Inferred?]",
+            Confidence::Unknown => "[Unknown]",
+        };
+
+        let prefix = if is_selected { "▶ " } else { "  " };
+
+        lines.push(Line::from(vec![
+            Span::styled(prefix, Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
+            Span::styled("● ", Style::default().fg(dot_color)),
+            Span::styled(&agent.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::raw("  "),
+            Span::styled(status_text, Style::default().fg(dot_color)),
+            Span::styled(format!(" {} ", conf_tag), Style::default().fg(Color::Rgb(100, 116, 139))),
+            Span::styled(agent.formatted_runtime(), Style::default().fg(Color::Rgb(148, 163, 184))),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::raw("     ↳ "),
+            Span::styled(format!("Branch: {}", agent.worktree_branch), Style::default().fg(Color::Rgb(168, 85, 247))),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::raw("     ↳ "),
+            Span::styled(format!("Task: {}", agent.target_file_or_task), Style::default().fg(Color::Rgb(148, 163, 184))),
+        ]));
+
+        lines.push(Line::raw(""));
+    }
+
+    if is_focused {
+        lines.push(Line::styled(
+            "[a] Launch  [d] Diff  [m] Merge  [x] Discard  [Enter] Shell",
+            Style::default().fg(Color::Rgb(56, 189, 248)),
+        ));
+    }
+
+    let p = Paragraph::new(lines).block(block).wrap(Wrap { trim: true });
+    f.render_widget(p, area);
+}
+
+fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
+    let status_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(40), Constraint::Length(45)])
+        .split(area);
+
+    let active_shell = app
+        .terminals
+        .get(app.active_terminal_idx)
+        .map(|t| t.title.as_str())
+        .unwrap_or("Shell");
+
+    let raw_path = app.workspace_dir.to_string_lossy();
+    let clean_path = raw_path.strip_prefix(r"\\?\").unwrap_or(&raw_path);
+
+    let left = vec![
+        Span::styled(" ● ", Style::default().fg(Color::Rgb(34, 197, 94))),
+        Span::styled("TIDE", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Span::raw(" │ "),
+        Span::styled(active_shell, Style::default().fg(Color::Rgb(56, 189, 248))),
+        Span::raw(" │ "),
+        Span::styled(clean_path.to_string(), Style::default().fg(Color::Rgb(148, 163, 184))),
+    ];
+
+    let right = vec![
+        Span::styled(format!("Workspace: {} │ ", app.workspace_name), Style::default().fg(Color::Rgb(148, 163, 184))),
+        Span::styled(format!("Git: {} │ ", app.git_info.branch), Style::default().fg(Color::Rgb(168, 85, 247))),
+        Span::styled(format!("Agents: {}/{}", app.agents.len(), app.agents.len()), Style::default().fg(Color::Rgb(34, 197, 94))),
+    ];
+
+    f.render_widget(Paragraph::new(Line::from(left)), status_chunks[0]);
+    f.render_widget(Paragraph::new(Line::from(right)).alignment(Alignment::Right), status_chunks[1]);
+}
+
+fn draw_help_modal(f: &mut Frame, area: Rect) {
+    let popup_area = centered_rect(60, 50, area);
+    f.render_widget(Clear, popup_area);
+
+    let help_text = vec![
+        Line::styled("TIDE Keyboard Shortcuts", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
+        Line::raw(""),
+        Line::from(vec![
+            Span::styled("<Tab>           ", Style::default().fg(Color::Yellow)),
+            Span::raw("Cycle active pane (Explorer -> Terminal -> Git -> Agents)"),
+        ]),
+        Line::from(vec![
+            Span::styled("<Ctrl-b>        ", Style::default().fg(Color::Yellow)),
+            Span::raw("Escape child terminal focus and return to TIDE controls"),
+        ]),
+        Line::from(vec![
+            Span::styled("<Ctrl-p>        ", Style::default().fg(Color::Yellow)),
+            Span::raw("Open Command Palette"),
+        ]),
+        Line::from(vec![
+            Span::styled("<Ctrl-t>        ", Style::default().fg(Color::Yellow)),
+            Span::raw("Open new terminal session tab"),
+        ]),
+        Line::from(vec![
+            Span::styled("<Ctrl-w>        ", Style::default().fg(Color::Yellow)),
+            Span::raw("Close current terminal session"),
+        ]),
+        Line::from(vec![
+            Span::styled("j / k           ", Style::default().fg(Color::Yellow)),
+            Span::raw("Navigate items in active pane"),
+        ]),
+        Line::from(vec![
+            Span::styled("<Ctrl-q>        ", Style::default().fg(Color::Rgb(239, 68, 68))),
+            Span::raw("Quit TIDE (Cleanly stops all Job Objects and child processes)"),
+        ]),
+        Line::raw(""),
+        Line::styled("Press Esc or F1 to close this help window", Style::default().fg(Color::Rgb(100, 116, 139))),
+    ];
+
+    let block = Block::default()
+        .title(" Help ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Rgb(56, 189, 248)));
+
+    let p = Paragraph::new(help_text).block(block).wrap(Wrap { trim: true });
+    f.render_widget(p, popup_area);
+}
+
+fn draw_command_palette_modal(f: &mut Frame, area: Rect) {
+    let popup_area = centered_rect(50, 40, area);
+    f.render_widget(Clear, popup_area);
+
+    let commands = vec![
+        Line::from(vec![Span::styled("1. ", Style::default().fg(Color::Yellow)), Span::raw("Spawn New Shell Terminal (PowerShell)")]),
+        Line::from(vec![Span::styled("2. ", Style::default().fg(Color::Yellow)), Span::raw("Launch Agent in Isolated Git Worktree")]),
+        Line::from(vec![Span::styled("3. ", Style::default().fg(Color::Yellow)), Span::raw("Git: Refresh Status & Commit Log")]),
+        Line::from(vec![Span::styled("4. ", Style::default().fg(Color::Yellow)), Span::raw("Explorer: Refresh Workspace Files")]),
+        Line::from(vec![Span::styled("5. ", Style::default().fg(Color::Yellow)), Span::raw("Quit TIDE")]),
+        Line::raw(""),
+        Line::styled("Type number or press Esc to cancel", Style::default().fg(Color::Rgb(100, 116, 139))),
+    ];
+
+    let block = Block::default()
+        .title(" Command Palette (<Ctrl-p>) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Rgb(56, 189, 248)));
+
+    let p = Paragraph::new(commands).block(block);
+    f.render_widget(p, popup_area);
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
+}
+
+fn convert_vt100_color(color: vt100::Color) -> Option<Color> {
+    match color {
+        vt100::Color::Default => None,
+        vt100::Color::Idx(i) => Some(Color::Indexed(i)),
+        vt100::Color::Rgb(r, g, b) => Some(Color::Rgb(r, g, b)),
+    }
+}
+
+fn draw_agent_launch_modal(f: &mut Frame, area: Rect) {
+    let popup_area = centered_rect(58, 48, area);
+    f.render_widget(Clear, popup_area);
+
+    let options = vec![
+        Line::styled("Launch New Coding-Agent in Isolated Git Worktree", Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)),
+        Line::raw(""),
+        Line::from(vec![
+            Span::styled("1. ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("Antigravity CLI (agy)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::raw(" - Google Deepmind Advanced Coding Agent"),
+        ]),
+        Line::from(vec![
+            Span::styled("2. ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("Claude Code CLI (claude)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::raw(" - Anthropic Autonomous Agent CLI"),
+        ]),
+        Line::from(vec![
+            Span::styled("3. ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("Isolated Worktree Shell (powershell)", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::raw(" - Custom manual worktree session"),
+        ]),
+        Line::raw(""),
+        Line::styled("• Dedicated branch & worktree (.tide/worktrees/<id>) created automatically.", Style::default().fg(Color::Rgb(148, 163, 184))),
+        Line::styled("• All processes bound to Windows Job Object for clean teardown.", Style::default().fg(Color::Rgb(148, 163, 184))),
+        Line::raw(""),
+        Line::styled("Press 1, 2, or 3 to launch, or Esc to cancel.", Style::default().fg(Color::Rgb(100, 116, 139))),
+    ];
+
+    let block = Block::default()
+        .title(" 🤖 Launch Agent Session ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Rgb(56, 189, 248)));
+
+    let p = Paragraph::new(options).block(block).wrap(Wrap { trim: true });
+    f.render_widget(p, popup_area);
+}
+
+fn draw_diff_modal(f: &mut Frame, app: &App, area: Rect) {
+    let popup_area = centered_rect(80, 75, area);
+    f.render_widget(Clear, popup_area);
+
+    let (title, content) = match &app.diff_modal_content {
+        Some((t, c)) => (t.as_str(), c.as_str()),
+        None => ("Agent Diff", "No diff available"),
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(2)])
+        .split(popup_area);
+
+    let block = Block::default()
+        .title(format!(" 🔍 {} ", title))
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Rgb(168, 85, 247)));
+
+    let mut diff_lines = Vec::new();
+    for line in content.lines() {
+        let style = if line.starts_with('+') && !line.starts_with("+++") {
+            Style::default().fg(Color::Rgb(34, 197, 94))
+        } else if line.starts_with('-') && !line.starts_with("---") {
+            Style::default().fg(Color::Rgb(239, 68, 68))
+        } else if line.starts_with("@@") {
+            Style::default().fg(Color::Rgb(56, 189, 248)).add_modifier(Modifier::BOLD)
+        } else if line.starts_with("diff --git") {
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Rgb(226, 232, 240))
+        };
+        diff_lines.push(Line::styled(line.to_string(), style));
+    }
+
+    let p = Paragraph::new(diff_lines).block(block).wrap(Wrap { trim: false });
+    f.render_widget(p, chunks[0]);
+
+    let action_spans = vec![
+        Span::styled(" [A] ", Style::default().bg(Color::Rgb(34, 197, 94)).fg(Color::Black).add_modifier(Modifier::BOLD)),
+        Span::raw(" Accept & Merge to Base   "),
+        Span::styled(" [D] ", Style::default().bg(Color::Rgb(239, 68, 68)).fg(Color::White).add_modifier(Modifier::BOLD)),
+        Span::raw(" Discard Worktree & Branch   "),
+        Span::styled(" [Esc] ", Style::default().bg(Color::Rgb(100, 116, 139)).fg(Color::White)),
+        Span::raw(" Close"),
+    ];
+    f.render_widget(Paragraph::new(Line::from(action_spans)).alignment(Alignment::Center), chunks[1]);
+}

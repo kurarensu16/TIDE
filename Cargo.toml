@@ -1,0 +1,21 @@
+[package]
+name = "tide"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+portable-pty = "0.8"
+vt100 = "0.15"
+crossbeam-channel = "0.5"
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_System_JobObjects",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading"
+] }
