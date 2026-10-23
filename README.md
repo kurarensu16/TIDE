@@ -17,7 +17,7 @@
 
 ---
 
-## 🌊 Overview
+## Overview
 
 **TIDE** is a native, terminal-integrated workspace built for the era of AI coding agents. 
 
@@ -27,13 +27,13 @@ TIDE does not host an AI model; it **orchestrates locally installed coding-agent
 
 ```
 ┌─ Explorer [F2] ─────────┬─ Editor / Preview [F5] ──────────────────┬─ Agents [F4] ──────────┐
-│ 📁 src/                 │ 1  use anyhow::Result;                   │ ● Antigravity [RUN]    │
+│ src/                    │ 1  use anyhow::Result;                   │ * Antigravity [RUN]    │
 │   ├── app.rs            │ 2  use ratatui::Terminal;                │   tree: .tide/agy-auth │
 │   ├── job_object.rs     │ 3                                        │   task: Implement OAuth│
-│   ├── main.rs           │ 4  pub fn start_workspace() -> Result<()>{│ ● Claude Code  [IDLE]   │
+│   ├── main.rs           │ 4  pub fn start_workspace() -> Result<()>{│ * Claude Code  [IDLE]   │
 │   └── ui.rs             │ 5      // 60 FPS frame-paced render loop │   tree: .tide/claude-2 │
-│ 📁 web/                 │ 6  }                                     ├─ Git Status [F3] ──────┤
-│                         ├─ Terminal [Ctrl+t new | F7/F8 tab] ──────┤ ⎇ main (3 staged)      │
+│ web/                    │ 6  }                                     ├─ Git Status [F3] ──────┤
+│                         ├─ Terminal [Ctrl+t new | F7/F8 tab] ──────┤ branch main (3 staged) │
 │                         │ > cargo check                            │ + src/app.rs           │
 │                         │    Compiling tide v0.1.0                 │ + src/job_object.rs    │
 │                         │    Finished `dev` profile in 0.42s       │ ~ src/ui.rs            │
@@ -43,24 +43,24 @@ TIDE does not host an AI model; it **orchestrates locally installed coding-agent
 
 ---
 
-## ✨ Core Architecture Pillars
+## Core Architecture Pillars
 
-### 1. 🛡️ Windows Job Object Process Lifecycle
+### 1. Windows Job Object Process Lifecycle
 Coding agents frequently spawn deep child processes (compilers, language servers, test suites, background watchers) that can easily become orphaned when a shell exits, holding file locks on Windows and bricking Git operations.
 - TIDE binds each terminal and agent session to an OS-level **Windows Job Object** configured with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`.
 - When an agent is stopped or closed, the entire process hierarchy is terminated atomically — guaranteeing zero orphaned processes and zero locked files.
 
-### 2. 🌲 Dedicated Git Worktree Isolation
+### 2. Dedicated Git Worktree Isolation
 Running parallel coding agents on a single branch causes destructive race conditions, dirty working directories, and accidental file overwrites.
 - Every agent session is automatically bootstrapped into its own dedicated Git worktree and branch under `.tide/worktrees/`.
 - Inspect per-agent diffs before merging (`d`), merge clean changes (`m`), or safely discard rejected sessions (`x`) with automated worktree cleanup.
 
-### 3. ⚡ 60 FPS Frame-Paced PTY Rendering
+### 3. 60 FPS Frame-Paced PTY Rendering
 High-throughput command outputs (e.g., verbose compiler logs, test floods) can easily overwhelm TUI event loops, causing severe interface freezes.
 - Embedded terminals run on background threads using `portable-pty` (ConPTY on Windows) and `vt100` terminal emulation.
 - Reader threads update screen grids in-place and coalesce dirty flags, while the main UI thread renders at a steady, frame-paced **~60 FPS (16ms)** cadence. Keypresses stay responsive regardless of child output volume.
 
-### 4. 🧭 Honest Agent Telemetry
+### 4. Honest Agent Telemetry
 Detecting autonomous agent states via fragile screen scraping or regex guesswork is unreliable.
 - TIDE reports agent state alongside its confidence level:
   - **Confirmed**: Reported via structured CLI exit codes, active PTY process status, or adapter signals.
@@ -69,7 +69,7 @@ Detecting autonomous agent states via fragile screen scraping or regex guesswork
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Rust**: Stable toolchain (1.85+ recommended, 2024 Edition)
@@ -95,7 +95,7 @@ cargo build --release
 
 ---
 
-## ⌨️ Keyboard Shortcuts & Navigation
+## Keyboard Shortcuts & Navigation
 
 TIDE is designed from the ground up for frictionless, keyboard-first navigation. All universal function keys are conflict-free and bypass child PTY shells.
 
@@ -187,7 +187,7 @@ TIDE is designed from the ground up for frictionless, keyboard-first navigation.
 
 ---
 
-## 🎨 Built-in Color Themes
+## Built-in Color Themes
 
 TIDE features a centralized design system with 10 meticulously crafted color palettes. Switch themes on the fly via `F12` with instant live preview:
 
@@ -204,7 +204,7 @@ TIDE features a centralized design system with 10 meticulously crafted color pal
 
 ---
 
-## 🌐 Documentation & Web Landing
+## Documentation & Web Landing
 
 The [`web/`](./web) directory contains the official TIDE product site and interactive technical documentation:
 
@@ -225,7 +225,7 @@ npm run dev
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 TIDE/
@@ -258,7 +258,7 @@ TIDE/
 
 ---
 
-## 🔒 Safety & Design Guarantees
+## Safety & Design Guarantees
 
 - **No Silent Discards**: Unsaved editor changes or uncommitted worktree diffs will never be deleted without an explicit confirmation dialog.
 - **No Automatic Merges**: Agent worktrees are never merged into parent branches automatically. Every integration requires a deliberate user review (`m`).
@@ -267,6 +267,6 @@ TIDE/
 
 ---
 
-## 📄 License
+## License
 
 TIDE is open-source software licensed under either the [MIT License](LICENSE) or [Apache License (Version 2.0)](LICENSE) at your option.
