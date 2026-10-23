@@ -59,7 +59,7 @@ graph TD
   - Secondary text link: `See how it works →`
 * **Quick Install Box**:
   ```bash
-  cargo install --git https://github.com/sadia/TIDE
+  cargo install --git https://github.com/kurarensu16/TIDE
   ```
   *(With 1-click Copy button)*
 * **Footnote**: `Lightweight single binary · Starts in <0.5s · Uses ~14 MB RAM · Zero Electron bloat`
@@ -186,11 +186,11 @@ graph TD
   > ## Give your AI agents a proper workspace.
 * **1-Click Copy Box**:
   ```bash
-  cargo install --git https://github.com/sadia/TIDE
+  cargo install --git https://github.com/kurarensu16/TIDE
   ```
 * **Or Build From Source**:
   ```bash
-  git clone https://github.com/sadia/TIDE.git
+  git clone https://github.com/kurarensu16/TIDE.git
   cd TIDE
   cargo build --release
   ```

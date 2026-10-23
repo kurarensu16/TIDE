@@ -76,8 +76,23 @@ Detecting autonomous agent states via fragile screen scraping or regex guesswork
 - **Git**: Installed and available in your `PATH`
 - **OS**: Windows 11 (fully native ConPTY support), Linux, or macOS
 
-### Installation & Build
+### Installation
 
+#### Option 1: One-Line Install via Cargo (Recommended)
+Installs the `tide` binary directly into your Cargo path (`~/.cargo/bin/tide.exe`):
+```bash
+cargo install --git https://github.com/kurarensu16/TIDE.git
+```
+Once installed, you can launch TIDE from anywhere in your terminal:
+```bash
+# Open current directory
+tide
+
+# Or open a specific workspace
+tide "C:\path\to\project"
+```
+
+#### Option 2: Build from Source
 ```bash
 # Clone the repository
 git clone https://github.com/kurarensu16/TIDE.git
@@ -86,11 +101,8 @@ cd TIDE
 # Build release binary
 cargo build --release
 
-# Run TIDE in your current workspace
+# Run TIDE binary
 ./target/release/tide.exe
-
-# Or open a specific project directory
-./target/release/tide.exe "C:\path\to\project"
 ```
 
 ---
