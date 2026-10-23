@@ -1,0 +1,109 @@
+---
+// FaqSection.astro - Technical Architecture FAQ & Systems Explanations
+const faqs = [
+  {
+    q: "Why do parallel coding agents cause chaos without Git worktree isolation?",
+    a: "Autonomous agents like Claude Code or Antigravity write directly to disk and execute commands. If two agents run concurrently in your primary working tree, they overwrite each other's edits, leave unresolvable git index conflicts, and corrupt work in progress. TIDE assigns each agent its own isolated Git worktree (.tide/worktrees/<id>) and branch. Your main working tree remains untouched until you explicitly approve and merge changes.",
+    tag: "Worktrees",
+  },
+  {
+    q: "How does Windows Job Object teardown work, and why does standard process kill fail?",
+    a: "On Windows, calling standard Child::kill() only sends a signal to the immediate root shell process. If the agent spawned cargo watch, node, or a background test suite, those grandchildren become detached zombies holding mandatory Windows file locks. Windows refuses to let you switch branches or delete directories while those locks exist. TIDE registers an OS-level Windows Job Object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE. When a session terminates, the Windows NT kernel tears down the entire process tree down to the last grandchild in milliseconds.",
+    tag: "Windows Kernel",
+  },
+  {
+    q: "Does creating a worktree duplicate gigabytes of node_modules or cargo target caches?",
+    a: "No. Git worktrees share the same underlying .git object database. Furthermore, TIDE executes declarative bootstrapping hooks configured in tide.toml upon worktree creation: it automatically links shared build caches (such as CARGO_TARGET_DIR or node_modules/.cache) and copies untracked local secrets (.env). Build times remain sub-second without wasting disk space.",
+    tag: "Bootstrapping",
+  },
+  {
+    q: "Which coding agent CLIs are supported out of the box?",
+    a: "Any command-line tool. TIDE uses standard Windows ConPTY and POSIX PTY interfaces. It comes with native declarative adapter profiles for Google Antigravity CLI (agy), Anthropic Claude Code (claude), Aider, OpenAI Codex, and custom test runners. You can add any proprietary or internal agent tool via tide.toml.",
+    tag: "Agent Adapters",
+  },
+  {
+    q: "How does the 60 FPS PTY frame pacer prevent terminal lockup?",
+    a: "When an agent executes verbose compiler dumps or test suites emitting 100,000 lines of ANSI sequences per second, naive TUIs attempt to redraw the terminal on every packet, locking keystroke input. TIDE decouples the PTY reader onto an independent background thread updating an in-memory virtual terminal grid. Dirty state notifications are coalesced and rendered at a locked 60 FPS (16.6ms frame pacing). Keystroke latency stays under 25ms at all times.",
+    tag: "ConPTY & UI",
+  },
+  {
+    q: "Can I jump from TIDE directly into an external editor like VS Code or Neovim?",
+    a: "Yes. TIDE is designed to complement your favorite editor, not force proprietary lock-in. Pressing Ctrl+O from the file explorer or diff viewer opens the current file and line position directly in your configured external editor ($EDITOR, VS Code, Neovim, Helix, or Zed).",
+    tag: "Workflow Interop",
+  },
+];
+---
+
+<section id="faq" class="py-20 border-b border-tide-border bg-tide-bg relative">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mb-12">
+      <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-2 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-tide-accent"></span>
+        <span>// Systems Architecture & FAQ</span>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text mb-4">
+        Frequently Answered Questions.
+      </h2>
+      <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans">
+        Systems engineering answers for developers who care about OS handles, memory footprints, and concurrent process boundaries.
+      </p>
+    </div>
+
+    <!-- FAQ Accordion -->
+    <div class="max-w-4xl space-y-3 font-mono text-xs">
+      {faqs.map((faq, index) => (
+        <div class="faq-item rounded-lg border border-tide-border bg-tide-surface overflow-hidden transition-all duration-200">
+          <button
+            class="faq-toggle w-full p-4 text-left flex items-center justify-between gap-4 hover:bg-tide-variant/40 transition-colors"
+            data-index={index}
+            aria-expanded="false"
+          >
+            <div class="flex items-center gap-3">
+              <span class="text-tide-accent font-bold text-xs select-none">[{index + 1}]</span>
+              <span class="font-bold text-sm text-tide-text">{faq.q}</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-tide-variant text-tide-muted border border-tide-border hidden sm:inline">
+                {faq.tag}
+              </span>
+              <span class="faq-icon text-tide-accent font-bold transition-transform duration-200 text-sm">
+                +
+              </span>
+            </div>
+          </button>
+          <div class="faq-answer hidden px-4 pb-4 pt-1 text-xs text-tide-text-secondary font-sans leading-relaxed border-t border-tide-border/50 bg-tide-bg/50">
+            {faq.a}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  // FAQ accordion toggle script
+  const faqToggles = document.querySelectorAll('.faq-toggle');
+
+  faqToggles.forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const parent = toggle.closest('.faq-item');
+      if (!parent) return;
+      const answer = parent.querySelector('.faq-answer');
+      const icon = parent.querySelector('.faq-icon');
+      const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+
+      // Toggle this item
+      if (isExpanded) {
+        toggle.setAttribute('aria-expanded', 'false');
+        answer?.classList.add('hidden');
+        if (icon) icon.textContent = '+';
+        parent.classList.remove('border-tide-border-active');
+      } else {
+        toggle.setAttribute('aria-expanded', 'true');
+        answer?.classList.remove('hidden');
+        if (icon) icon.textContent = '−';
+        parent.classList.add('border-tide-border-active');
+      }
+    });
+  });
+</script>

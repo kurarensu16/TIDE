@@ -1,0 +1,150 @@
+---
+// SectionWorkflow.astro - 02 / THE WORKFLOW (Plain-English Edition)
+---
+
+<section id="how-it-works" class="py-20 border-b border-tide-border bg-tide-surface/30 relative scroll-mt-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- DevThread-style section label -->
+    <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
+      02 / THE WORKFLOW
+    </div>
+
+    <!-- Header Row -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono">
+        You set the task.<br />
+        TIDE keeps your project safe.
+      </h2>
+      <a
+        href="/docs#pipeline"
+        class="text-xs font-mono text-tide-accent hover:underline flex items-center gap-1 shrink-0"
+      >
+        <span>Read the step-by-step guide</span>
+        <span>↗</span>
+      </a>
+    </div>
+
+    <!-- 5-Step Connected Flow (DevThread Horizontal Rhythm) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 relative mb-12">
+      
+      <!-- Step 01 -->
+      <div class="p-5 rounded-lg border border-tide-border bg-tide-surface flex flex-col justify-between space-y-4 relative group hover:border-tide-border-active transition-all">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-7 h-7 rounded-full border border-tide-border bg-tide-variant text-tide-accent font-mono text-xs font-bold flex items-center justify-center">
+              01
+            </span>
+            <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
+          </div>
+          <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
+            Launch in seconds
+          </h3>
+          <div class="text-[11px] text-tide-muted font-mono mb-2">
+            You &middot; terminal
+          </div>
+          <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
+            Type <code class="text-tide-accent font-mono">tide .</code> in any folder or press <kbd class="px-1 py-0.5 rounded bg-tide-variant text-[10px] border border-tide-border text-tide-text font-mono">Ctrl+N</kbd>. TIDE launches instantly in under half a second.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 02 -->
+      <div class="p-5 rounded-lg border border-tide-border bg-tide-surface flex flex-col justify-between space-y-4 relative group hover:border-tide-border-active transition-all">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-7 h-7 rounded-full border border-tide-border bg-tide-variant text-tide-accent font-mono text-xs font-bold flex items-center justify-center">
+              02
+            </span>
+            <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
+          </div>
+          <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
+            Instant Private Copy
+          </h3>
+          <div class="text-[11px] text-tide-muted font-mono mb-2">
+            Private sandbox
+          </div>
+          <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
+            TIDE gives the agent its own private copy of your code (using Git worktrees). It can edit, test, and delete files without touching your main branch.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 03 -->
+      <div class="p-5 rounded-lg border border-tide-border bg-tide-surface flex flex-col justify-between space-y-4 relative group hover:border-tide-border-active transition-all">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-7 h-7 rounded-full border border-tide-border bg-tide-variant text-tide-accent font-mono text-xs font-bold flex items-center justify-center">
+              03
+            </span>
+            <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
+          </div>
+          <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
+            Automatic Cleanup Guard
+          </h3>
+          <div class="text-[11px] text-tide-muted font-mono mb-2">
+            Zero ghost servers
+          </div>
+          <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
+            Every agent runs in a protected sandbox. When you close the session, every single child process, test runner, and background server is instantly killed.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 04 -->
+      <div class="p-5 rounded-lg border border-tide-border bg-tide-surface flex flex-col justify-between space-y-4 relative group hover:border-tide-border-active transition-all">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-7 h-7 rounded-full border border-tide-border bg-tide-variant text-tide-accent font-mono text-xs font-bold flex items-center justify-center">
+              04
+            </span>
+            <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
+          </div>
+          <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
+            Compare Changes
+          </h3>
+          <div class="text-[11px] text-tide-muted font-mono mb-2">
+            You inspect &middot; side-by-side
+          </div>
+          <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
+            Hit <kbd class="px-1 py-0.5 rounded bg-tide-variant text-[10px] border border-tide-border text-tide-text font-mono">Ctrl+G</kbd> to see a clean side-by-side diff of everything the agent modified before anything enters your real project.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 05 -->
+      <div class="p-5 rounded-lg border border-tide-border bg-tide-surface flex flex-col justify-between space-y-4 relative group hover:border-tide-border-active transition-all">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="w-7 h-7 rounded-full border border-tide-border bg-tide-variant text-tide-accent font-mono text-xs font-bold flex items-center justify-center">
+              05
+            </span>
+            <span class="text-tide-success text-[10px] font-mono">✓</span>
+          </div>
+          <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
+            Merge Cleanly
+          </h3>
+          <div class="text-[11px] text-tide-muted font-mono mb-2">
+            One keystroke &middot; all clean
+          </div>
+          <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
+            Once you verify the code works, approve it with one key. TIDE merges changes cleanly and removes the temporary workspace with zero leftover clutter.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Stepped Prompt Callout (DevThread Style) -->
+    <div class="p-4 sm:p-5 rounded-lg border border-tide-border bg-tide-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono text-xs">
+      <div class="flex items-center gap-3">
+        <span class="text-tide-accent font-bold select-none">&gt;</span>
+        <span class="text-tide-text font-bold">Start with <code class="text-tide-accent">“tide .”</code></span>
+      </div>
+      <div class="text-tide-text-secondary text-[11px] font-sans">
+        Workflows run in isolated copies. Your main branch stays safe until you approve changes. <a href="/docs#quickstart" class="text-tide-accent hover:underline">Read quickstart &rarr;</a>
+      </div>
+    </div>
+
+  </div>
+</section>

@@ -6,8 +6,11 @@ mod agents;
 mod app;
 mod explorer;
 mod git;
+mod icons;
 mod job_object;
+mod logo;
 mod terminal;
+mod theme;
 mod ui;
 mod worktree;
 
@@ -93,6 +96,7 @@ fn main() -> Result<()> {
         // Render frame if dirty signal arrived or frame budget elapsed
         let is_dirty = app.dirty_rx.try_recv().is_ok();
         if is_dirty || elapsed >= frame_duration {
+            app.poll_bg_notifications();
             app.update_agent_heuristics();
             terminal.draw(|f| ui::draw(f, &mut app))?;
             last_render = Instant::now();

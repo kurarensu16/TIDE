@@ -1,0 +1,110 @@
+---
+// EngineeringPillars.astro
+---
+
+<section id="systems" class="py-20 border-b border-tide-border bg-tide-bg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mb-12">
+      <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-2">
+        // Systems Engineering
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-tide-text mb-4">
+        Under the hood: Built for OS-level reliability.
+      </h2>
+      <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed">
+        Most tools treat terminals as text boxes. TIDE treats them as critical child processes with hardware, OS-kernel, and filesystem constraints.
+      </p>
+    </div>
+
+    <!-- 4 Deep Dive Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Pillar 1: Windows Job Objects -->
+      <div class="p-6 rounded-lg border border-tide-border bg-tide-surface font-mono">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-tide-border">
+          <span class="text-tide-accent font-bold text-sm">// 01: Zero Leaked Child Processes</span>
+          <span class="text-[10px] text-tide-muted">src/job_object.rs</span>
+        </div>
+        <p class="text-xs text-tide-text-secondary mb-4 leading-relaxed">
+          Standard <code class="text-tide-text">Child::kill()</code> on Windows only signals the immediate PTY root shell. If an agent spawned <code class="text-tide-text">cargo watch</code> or <code class="text-tide-text">node</code>, those grandchildren become orphaned zombies, holding write locks on worktree files.
+        </p>
+        <div class="p-3 rounded bg-tide-bg border border-tide-border text-[11px] text-tide-text-secondary mb-3 overflow-x-auto">
+          <div class="text-tide-muted">// Windows Job Object Extended Limits</div>
+          <div>let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe &#123; zeroed() &#125;;</div>
+          <div class="text-tide-accent font-bold">info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;</div>
+          <div>SetInformationJobObject(handle, JobObjectExtendedLimitInformation, ...);</div>
+        </div>
+        <p class="text-xs text-tide-text-secondary leading-relaxed">
+          The instant you stop an agent session or exit TIDE, the Windows NT kernel immediately terminates the entire process tree down to the last grandchild. Zero file locks, zero orphaned RAM.
+        </p>
+      </div>
+
+      <!-- Pillar 2: Worktree Bootstrapping -->
+      <div class="p-6 rounded-lg border border-tide-border bg-tide-surface font-mono">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-tide-border">
+          <span class="text-tide-accent font-bold text-sm">// 02: Cold-Start Elimination</span>
+          <span class="text-[10px] text-tide-muted">src/worktree.rs</span>
+        </div>
+        <p class="text-xs text-tide-text-secondary mb-4 leading-relaxed">
+          Git worktrees are clean directories by default. Without bootstrapping, agents fail due to missing <code class="text-tide-text">.env</code> keys, or force a 90-second cold compilation by rebuilding target artifacts from scratch.
+        </p>
+        <div class="p-3 rounded bg-tide-bg border border-tide-border text-[11px] text-tide-text-secondary mb-3 overflow-x-auto">
+          <div class="text-tide-muted"># tide.toml worktree hooks</div>
+          <div class="text-tide-success">bootstrap_env = true # symlink untracked .env</div>
+          <div class="text-tide-success">share_target_dir = true # link CARGO_TARGET_DIR</div>
+          <div class="text-tide-accent">shared_cache = ["~/.cargo", "node_modules/.cache"]</div>
+        </div>
+        <p class="text-xs text-tide-text-secondary leading-relaxed">
+          TIDE runs custom bootstrap hooks upon worktree creation, allowing agents to execute tests and builds in sub-second time without duplicating gigabytes of build caches.
+        </p>
+      </div>
+
+      <!-- Pillar 3: 60Hz Frame Pacing -->
+      <div class="p-6 rounded-lg border border-tide-border bg-tide-surface font-mono">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-tide-border">
+          <span class="text-tide-accent font-bold text-sm">// 03: Frame-Paced PTY Engine</span>
+          <span class="text-[10px] text-tide-muted">src/terminal.rs</span>
+        </div>
+        <p class="text-xs text-tide-text-secondary mb-4 leading-relaxed">
+          When an agent runs verbose test suites or compiler dumps emitting 100,000 lines of ANSI sequences, naive TUIs attempt to render every burst, locking up keystroke input.
+        </p>
+        <div class="p-3 rounded bg-tide-bg border border-tide-border text-[11px] text-tide-text-secondary mb-3 overflow-x-auto">
+          <div class="text-tide-muted">// Decoupled Reader & Render Loop</div>
+          <div>pty_reader_thread -> updates vt100 grid in-place;</div>
+          <div class="text-tide-accent font-bold">dirty_tx.try_send(()) -> coalesced dirty flag;</div>
+          <div>ui_thread -> frame_paced @ 16.6ms (max 60 FPS);</div>
+        </div>
+        <p class="text-xs text-tide-text-secondary leading-relaxed">
+          Background threads update an in-memory virtual terminal grid independently. Keystrokes echo in &lt;25ms even while an agent dumps hundreds of thousands of lines of terminal output.
+        </p>
+      </div>
+
+      <!-- Pillar 4: Honest Telemetry -->
+      <div class="p-6 rounded-lg border border-tide-border bg-tide-surface font-mono">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-tide-border">
+          <span class="text-tide-accent font-bold text-sm">// 04: Honest Confidence Levels</span>
+          <span class="text-[10px] text-tide-muted">src/agents.rs</span>
+        </div>
+        <p class="text-xs text-tide-text-secondary mb-4 leading-relaxed">
+          Guessing what an autonomous agent is doing from raw stdout is inherently brittle. Rather than faking certainty, TIDE reports telemetry alongside explicit confidence levels:
+        </p>
+        <div class="space-y-2 text-xs mb-3">
+          <div class="flex items-center gap-2 p-1.5 rounded bg-tide-variant/40 border border-tide-border">
+            <span class="px-1.5 py-0.5 rounded bg-tide-success/20 text-tide-success text-[10px] font-bold">CONFIRMED</span>
+            <span class="text-tide-text-secondary text-[11px]">Reported by process state, exit code, or CLI hook.</span>
+          </div>
+          <div class="flex items-center gap-2 p-1.5 rounded bg-tide-variant/40 border border-tide-border">
+            <span class="px-1.5 py-0.5 rounded bg-tide-warning/20 text-tide-warning text-[10px] font-bold">INFERRED</span>
+            <span class="text-tide-text-secondary text-[11px]">Derived from idle heuristics or prompt pattern match.</span>
+          </div>
+          <div class="flex items-center gap-2 p-1.5 rounded bg-tide-variant/40 border border-tide-border">
+            <span class="px-1.5 py-0.5 rounded bg-tide-muted/20 text-tide-muted text-[10px] font-bold">UNKNOWN</span>
+            <span class="text-tide-text-secondary text-[11px]">No reliable signal. TIDE states it plainly rather than guessing.</span>
+          </div>
+        </div>
+        <p class="text-xs text-tide-text-secondary leading-relaxed">
+          You are always in control of what is factual telemetry vs. what is a heuristic hint.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>

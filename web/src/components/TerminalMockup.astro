@@ -1,0 +1,701 @@
+---
+// TerminalMockup.astro - 1:1 Pixel-Accurate Ratatui Workspace Simulation
+---
+
+<div id="interactive-terminal" class="relative w-full max-w-6xl mx-auto rounded-lg overflow-hidden tui-border bg-tide-surface font-mono text-xs select-none shadow-2xl transition-all">
+  <!-- Terminal Window Chrome -->
+  <div class="h-8 bg-tide-variant border-b border-tide-border flex items-center justify-between px-3">
+    <!-- Window controls (retro terminal style) -->
+    <div class="flex items-center gap-2">
+      <span class="w-3 h-3 rounded-full bg-tide-danger/80 border border-tide-danger inline-block cursor-pointer hover:opacity-100 opacity-80" title="Close Workspace"></span>
+      <span class="w-3 h-3 rounded-full bg-tide-warning/80 border border-tide-warning inline-block cursor-pointer hover:opacity-100 opacity-80" title="Minimize"></span>
+      <span class="w-3 h-3 rounded-full bg-tide-success/80 border border-tide-success inline-block cursor-pointer hover:opacity-100 opacity-80" title="Maximize"></span>
+      <span class="ml-2 text-tide-muted text-[11px] font-mono hidden sm:inline">
+        tide — v0.1.0 — Windows ConPTY + JobObjects
+      </span>
+    </div>
+
+    <!-- Workspace Title -->
+    <div class="text-[11px] text-tide-text-secondary font-mono flex items-center gap-1.5 truncate">
+      <span class="text-tide-accent font-bold">TIDE</span>
+      <span class="text-tide-muted">::</span>
+      <span class="text-tide-text" id="terminal-pwd">C:\Users\sadia\TIDE</span>
+      <span class="text-tide-muted">::</span>
+      <span class="text-tide-success font-semibold" id="terminal-branch">git:(main)</span>
+    </div>
+
+    <!-- Right indicators & Interactive modal launchers -->
+    <div class="flex items-center gap-2 text-[11px] text-tide-muted">
+      <button id="term-btn-palette" class="px-1.5 py-0.5 rounded bg-tide-bg hover:bg-tide-variant border border-tide-border text-tide-accent hover:text-white transition-colors" title="Open Command Palette (^P)">
+        ^P Palette
+      </button>
+      <span class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border text-tide-success font-semibold hidden md:inline">60 FPS</span>
+      <span class="hidden sm:inline">UTF-8</span>
+    </div>
+  </div>
+
+  <!-- TIDE Tab Bar with interactive switching -->
+  <div class="h-8 bg-tide-bg border-b border-tide-border flex items-center px-1 overflow-x-auto gap-1 text-[11px]" id="session-tabs">
+    <button data-tab-id="agy" class="terminal-tab-btn px-3 py-1 bg-tide-variant text-tide-text-secondary hover:text-tide-text border border-tide-border flex items-center gap-1.5 transition-all">
+      <span class="w-1.5 h-1.5 rounded-full bg-tide-accent"></span>
+      <span>1: agy (refactor-ast)</span>
+    </button>
+    <button data-tab-id="claude" class="terminal-tab-btn active px-3 py-1 bg-tide-tab-active-bg text-tide-tab-active-fg border border-tide-border-active flex items-center gap-1.5 font-bold shadow-sm transition-all">
+      <span class="w-1.5 h-1.5 rounded-full bg-tide-success animate-pulse"></span>
+      <span>2: claude (job-object-tests) *</span>
+    </button>
+    <button data-tab-id="powershell" class="terminal-tab-btn px-3 py-1 bg-tide-variant text-tide-text-secondary hover:text-tide-text border border-tide-border flex items-center gap-1.5 transition-all">
+      <span class="w-1.5 h-1.5 rounded-full bg-tide-muted"></span>
+      <span>3: powershell</span>
+    </button>
+    <button id="term-btn-add-session" class="px-2.5 py-1 text-tide-muted hover:text-tide-accent hover:bg-tide-variant rounded transition-colors font-bold text-xs" title="New Agent Session (^T)">
+      + New
+    </button>
+  </div>
+
+  <!-- TIDE Main Grid: 3-Column Split -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 min-h-[490px] bg-tide-bg relative">
+
+    <!-- Column 1: Explorer & Worktree Sessions (3 cols) -->
+    <div id="pane-explorer" class="pane-selectable lg:col-span-3 border-r border-tide-border p-2.5 bg-tide-surface/50 text-[11px] flex flex-col justify-between transition-colors">
+      <div>
+        <div class="flex items-center justify-between text-tide-muted uppercase tracking-wider text-[10px] pb-1.5 mb-2 border-b border-tide-border">
+          <span class="flex items-center gap-1 font-bold text-tide-text">
+            <span class="text-tide-accent">▼</span> WORKTREES & SESSIONS
+          </span>
+          <span class="text-tide-accent font-mono text-[10px]">[2 active]</span>
+        </div>
+
+        <!-- Agent Worktree Cards -->
+        <div class="space-y-1.5 mb-4">
+          <div id="worktree-item-agy" class="worktree-card cursor-pointer p-2 rounded bg-tide-variant/30 hover:bg-tide-variant/60 border border-tide-border text-tide-text-secondary transition-all" data-target="agy">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-tide-accent flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-tide-accent"></span>
+                <span>agy-worker</span>
+              </span>
+              <span class="text-[9px] px-1 py-0.2 rounded bg-tide-warning/20 text-tide-warning font-mono">WAIT_INPUT</span>
+            </div>
+            <div class="text-[10px] text-tide-muted mt-1 truncate">.tide/worktrees/agy-1</div>
+            <div class="text-[10px] text-tide-text-secondary flex items-center justify-between">
+              <span>branch: tide/refactor-ast</span>
+              <span class="text-tide-muted">1840 tok</span>
+            </div>
+          </div>
+
+          <div id="worktree-item-claude" class="worktree-card cursor-pointer p-2 rounded bg-tide-tab-active-bg/25 border border-tide-border-active text-tide-text transition-all" data-target="claude">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-tide-success flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-tide-success animate-pulse"></span>
+                <span>claude-runner</span>
+              </span>
+              <span class="text-[9px] px-1 py-0.2 rounded bg-tide-success/20 text-tide-success font-mono font-bold">CONFIRMED</span>
+            </div>
+            <div class="text-[10px] text-tide-muted mt-1 truncate">.tide/worktrees/claude-2</div>
+            <div class="text-[10px] text-tide-accent font-semibold flex items-center justify-between">
+              <span>branch: tide/job-objects</span>
+              <span class="text-tide-muted">2410 tok</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Tree -->
+        <div class="text-tide-muted uppercase tracking-wider text-[10px] pb-1.5 mb-1.5 border-b border-tide-border flex items-center justify-between font-bold">
+          <span>FILES (MAIN REPO)</span>
+          <span class="text-[9px] text-tide-accent">Ctrl+B</span>
+        </div>
+        <div class="space-y-1 text-tide-text-secondary font-mono text-[11px]">
+          <div class="text-tide-muted font-bold">▼ src/</div>
+          <div class="pl-3 hover:text-tide-accent hover:bg-tide-variant/30 py-0.5 rounded cursor-pointer transition-colors flex items-center justify-between">
+            <span>📄 agents.rs</span>
+            <span class="text-[9px] text-tide-muted">32KB</span>
+          </div>
+          <div class="pl-3 hover:text-tide-accent hover:bg-tide-variant/30 py-0.5 rounded cursor-pointer transition-colors flex items-center justify-between">
+            <span>📄 app.rs</span>
+            <span class="text-[9px] text-tide-muted">19KB</span>
+          </div>
+          <div class="pl-3 hover:text-tide-accent hover:bg-tide-variant/30 py-0.5 rounded cursor-pointer transition-colors text-tide-accent font-bold bg-tide-variant/40 flex items-center justify-between">
+            <span>📄 job_object.rs</span>
+            <span class="text-[9px] text-tide-accent">● modified</span>
+          </div>
+          <div class="pl-3 hover:text-tide-accent hover:bg-tide-variant/30 py-0.5 rounded cursor-pointer transition-colors flex items-center justify-between">
+            <span>📄 terminal.rs</span>
+            <span class="text-[9px] text-tide-muted">28KB</span>
+          </div>
+          <div class="pl-3 hover:text-tide-accent hover:bg-tide-variant/30 py-0.5 rounded cursor-pointer transition-colors flex items-center justify-between">
+            <span>📄 theme.rs</span>
+            <span class="text-[9px] text-tide-muted">8KB</span>
+          </div>
+          <div class="pl-3 hover:text-tide-accent hover:bg-tide-variant/30 py-0.5 rounded cursor-pointer transition-colors flex items-center justify-between">
+            <span>📄 ui.rs</span>
+            <span class="text-[9px] text-tide-muted">148KB</span>
+          </div>
+          <div class="pl-3 hover:text-tide-accent hover:bg-tide-variant/30 py-0.5 rounded cursor-pointer transition-colors flex items-center justify-between">
+            <span>📄 worktree.rs</span>
+            <span class="text-[9px] text-tide-muted">14KB</span>
+          </div>
+          <div class="text-tide-muted pl-3 pt-1">📄 Cargo.toml</div>
+        </div>
+      </div>
+
+      <!-- Quick Command Bar -->
+      <div class="pt-2 border-t border-tide-border text-[10px] text-tide-muted space-y-0.5">
+        <div class="flex items-center justify-between">
+          <span>NT Job Object:</span>
+          <span class="text-tide-success font-bold">BOUND (PID: 14820)</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>Teardown guard:</span>
+          <span class="text-tide-accent font-bold">KILL_ON_CLOSE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: Agent Terminal Pane (6 cols) -->
+    <div id="pane-terminal" class="pane-selectable lg:col-span-6 border-r border-tide-border p-3.5 flex flex-col justify-between bg-tide-bg transition-colors">
+      
+      <!-- Session Output Containers -->
+      <div id="terminal-content" class="font-mono text-xs leading-relaxed space-y-2">
+
+        <!-- SESSION 2 (Claude) Active by default -->
+        <div id="session-output-claude" class="session-view space-y-2">
+          <div class="flex items-center justify-between text-tide-muted border-b border-tide-border pb-1.5 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-tide-success font-bold">tide-pty-2</span>
+              <span>::</span>
+              <span class="text-tide-accent font-bold">claude-code</span>
+              <span class="text-[10px] text-tide-muted font-mono">(VT100 80x24 ConPTY)</span>
+            </div>
+            <span class="text-[10px] text-tide-success font-mono">● 60 FPS PACED</span>
+          </div>
+
+          <div class="text-tide-text-secondary">
+            <span class="text-tide-muted">claude@tide-worktree:</span><span class="text-tide-accent">~/worktrees/claude-2</span><span class="text-tide-muted">$</span>
+            <span class="text-tide-text font-semibold"> claude "Harden Windows JobObject teardown in job_object.rs and verify with cargo test"</span>
+          </div>
+
+          <div class="p-2 rounded bg-tide-surface/60 border border-tide-border text-[11px] text-tide-text-secondary space-y-1">
+            <div class="text-tide-muted text-[10px]">// TIDE Worktree Bootstrapping Protocol</div>
+            <div>[tide::worktree] Bootstrapped isolated tree at <code class="text-tide-accent">.tide/worktrees/claude-2</code></div>
+            <div>[tide::worktree] Linked <code class="text-tide-text">CARGO_TARGET_DIR</code> cache (saved 42s cold compile)</div>
+            <div>[tide::process] JobObject registered handle <code class="text-tide-text">0x000002A4</code> with <code class="text-tide-warning font-bold">KILL_ON_JOB_CLOSE</code></div>
+          </div>
+
+          <div class="p-2.5 rounded bg-tide-surface border border-tide-border text-[11px] space-y-1.5 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-tide-accent font-bold">🤖 Claude Code (Autonomous CLI)</span>
+              <span class="text-[10px] text-tide-muted">PID 24190</span>
+            </div>
+            <div class="text-tide-text-secondary">
+              Inspecting <span class="text-tide-text font-mono underline font-bold">src/job_object.rs</span>. Configured process limit flags:
+            </div>
+            <div class="font-mono text-tide-success pl-2 border-l-2 border-tide-success bg-tide-success/5 py-1">
+              + info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;<br/>
+              + SetInformationJobObject(handle, JobObjectExtendedLimitInformation, ...);
+            </div>
+            <div class="text-tide-text-secondary pt-1 font-semibold">
+              Running verification suite:
+            </div>
+            <div class="text-tide-muted font-mono text-[10px] bg-tide-bg p-2 rounded border border-tide-border">
+              &gt; cargo test --lib job_object<br/>
+              &nbsp;&nbsp;Compiling tide v0.1.0<br/>
+              &nbsp;&nbsp;Running unittests src/main.rs<br/>
+              <span class="text-tide-success font-bold">test job_object::tests::test_child_process_tree_killed ... ok</span><br/>
+              <span class="text-tide-success font-bold">test job_object::tests::test_job_handle_safe_close ... ok</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-1 text-tide-success text-[11px]">
+            <span class="flex items-center gap-1.5 font-bold">
+              <span class="w-2 h-2 rounded-full bg-tide-success"></span>
+              <span>Agent completed successfully.</span>
+            </span>
+            <span class="text-tide-muted text-[10px] font-mono">Runtime: 18s • Tokens: 2,410</span>
+          </div>
+        </div>
+
+        <!-- SESSION 1 (Antigravity) -->
+        <div id="session-output-agy" class="session-view hidden space-y-2">
+          <div class="flex items-center justify-between text-tide-muted border-b border-tide-border pb-1.5 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-tide-accent font-bold">tide-pty-1</span>
+              <span>::</span>
+              <span class="text-tide-accent font-bold">agy-worker</span>
+              <span class="text-[10px] text-tide-muted font-mono">(VT100 80x24 ConPTY)</span>
+            </div>
+            <span class="text-[10px] text-tide-warning font-mono">● AWAITING_INPUT</span>
+          </div>
+
+          <div class="text-tide-text-secondary">
+            <span class="text-tide-muted">agy@tide-worktree:</span><span class="text-tide-accent">~/worktrees/agy-1</span><span class="text-tide-muted">$</span>
+            <span class="text-tide-text font-semibold"> agy "Refactor agent confidence state machine into enum Confidence &#123; Confirmed, Inferred, Unknown &#125;"</span>
+          </div>
+
+          <div class="p-2.5 rounded bg-tide-surface border border-tide-border text-[11px] space-y-1.5">
+            <div class="text-tide-accent font-bold">🔮 Google Antigravity CLI (Agent Engine)</div>
+            <div class="text-tide-text-secondary">
+              Analyzed <span class="text-tide-text font-mono underline font-bold">src/agents.rs</span>. 3 match branches updated to enforce honest telemetry.
+            </div>
+            <div class="font-mono text-tide-accent pl-2 border-l-2 border-tide-accent bg-tide-accent/5 py-1">
+              + pub enum Confidence &#123; Confirmed, Inferred, Unknown &#125;<br/>
+              + impl Confidence &#123; pub fn badge_style(&self) -&gt; Style &#123; ... &#125; &#125;
+            </div>
+            <div class="p-2 rounded bg-tide-warning/10 border border-tide-warning/30 text-tide-warning flex items-center justify-between">
+              <span>Agent requests confirmation to commit changes:</span>
+              <span class="font-bold text-xs">[y/N]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SESSION 3 (PowerShell) -->
+        <div id="session-output-powershell" class="session-view hidden space-y-2">
+          <div class="flex items-center justify-between text-tide-muted border-b border-tide-border pb-1.5 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-tide-text font-bold">tide-pty-3</span>
+              <span>::</span>
+              <span class="text-tide-text font-bold">pwsh.exe</span>
+              <span class="text-[10px] text-tide-muted font-mono">(Host ConPTY)</span>
+            </div>
+            <span class="text-[10px] text-tide-success font-mono">● IDLE</span>
+          </div>
+
+          <div class="text-tide-text-secondary">
+            <span class="text-tide-success font-bold">PS C:\Users\sadia\TIDE&gt;</span>
+            <span class="text-tide-text font-semibold"> git worktree list</span>
+          </div>
+          <div class="text-tide-text-secondary font-mono text-[11px] bg-tide-surface p-2 rounded border border-tide-border space-y-0.5">
+            <div>C:/Users/sadia/TIDE                  8f2e1a9 [main]</div>
+            <div class="text-tide-accent">C:/Users/sadia/TIDE/.tide/worktrees/agy-1     c4d9201 [tide/refactor-ast]</div>
+            <div class="text-tide-success">C:/Users/sadia/TIDE/.tide/worktrees/claude-2  e7104b2 [tide/job-objects]</div>
+          </div>
+
+          <div class="text-tide-text-secondary pt-2">
+            <span class="text-tide-success font-bold">PS C:\Users\sadia\TIDE&gt;</span>
+            <span class="text-tide-text font-semibold"> cargo check --all-targets</span>
+          </div>
+          <div class="text-tide-muted font-mono text-[10px]">
+            &nbsp;&nbsp;Checking tide v0.1.0 (C:\Users\sadia\TIDE)<br/>
+            &nbsp;&nbsp;<span class="text-tide-success font-bold">Finished `dev` profile [unoptimized + debuginfo] in 0.48s</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live interactive prompt bar with quick-fill command pills -->
+      <div class="mt-4 pt-2.5 border-t border-tide-border">
+        <!-- Preset command pills for quick testing -->
+        <div class="flex items-center gap-1.5 mb-2 overflow-x-auto text-[10px]">
+          <span class="text-tide-muted select-none">Try:</span>
+          <button class="cmd-pill px-2 py-0.5 rounded bg-tide-variant/60 hover:bg-tide-variant text-tide-text-secondary hover:text-tide-accent border border-tide-border transition-colors font-mono" data-cmd="cargo test --lib job_object">
+            cargo test
+          </button>
+          <button class="cmd-pill px-2 py-0.5 rounded bg-tide-variant/60 hover:bg-tide-variant text-tide-text-secondary hover:text-tide-accent border border-tide-border transition-colors font-mono" data-cmd="git status --short">
+            git status
+          </button>
+          <button class="cmd-pill px-2 py-0.5 rounded bg-tide-variant/60 hover:bg-tide-variant text-tide-text-secondary hover:text-tide-accent border border-tide-border transition-colors font-mono" data-cmd="tide --inspect-jobs">
+            job limits
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between text-tide-muted text-[11px] bg-tide-surface/70 px-2.5 py-1.5 rounded border border-tide-border">
+          <div class="flex items-center gap-2 text-tide-text w-full">
+            <span class="text-tide-accent font-bold">❯</span>
+            <input
+              id="term-input-box"
+              type="text"
+              placeholder="type any shell or agent command..."
+              class="w-full bg-transparent border-none outline-none text-tide-text font-mono text-xs placeholder:text-tide-muted"
+            />
+          </div>
+          <div class="text-[10px] text-tide-muted shrink-0 pl-2">
+            <kbd class="px-1 py-0.5 bg-tide-variant border border-tide-border rounded text-tide-text font-mono">Enter</kbd>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 3: Diff Review & Integration Pane (3 cols) -->
+    <div id="pane-diff" class="pane-selectable lg:col-span-3 p-2.5 bg-tide-surface/30 flex flex-col justify-between text-[11px] transition-colors">
+      <div>
+        <div class="flex items-center justify-between text-tide-muted uppercase tracking-wider text-[10px] pb-1.5 mb-2 border-b border-tide-border">
+          <span class="flex items-center gap-1 font-bold text-tide-text">
+            <span class="text-tide-accent">●</span> DIFF REVIEW
+          </span>
+          <button id="term-btn-full-diff" class="text-tide-accent font-mono hover:underline cursor-pointer">
+            Ctrl+G [Expand]
+          </button>
+        </div>
+
+        <div class="text-[10px] text-tide-muted mb-2 flex items-center justify-between">
+          <span>Comparing <code id="diff-branch-label" class="text-tide-accent font-semibold">tide/job-objects</code>:</span>
+          <span class="text-tide-success font-bold">+4 / -1</span>
+        </div>
+
+        <!-- Diff Hunks (Dynamic based on active session) -->
+        <div id="diff-content-claude" class="diff-view space-y-1 font-mono text-[10px] bg-tide-bg p-2 rounded border border-tide-border overflow-hidden">
+          <div class="text-tide-accent font-bold flex items-center justify-between">
+            <span>src/job_object.rs</span>
+            <span class="text-tide-muted text-[9px]">L38-L46</span>
+          </div>
+          <div class="text-tide-muted">@@ -38,7 +38,10 @@</div>
+          <div class="text-tide-text-secondary">   let mut info: ...</div>
+          <div class="text-tide-danger bg-tide-danger/10 px-1 py-0.5 rounded-sm">-  info.LimitFlags = 0;</div>
+          <div class="text-tide-success bg-tide-success/10 px-1 py-0.5 rounded-sm">+  info.BasicLimitInformation</div>
+          <div class="text-tide-success bg-tide-success/10 px-1 py-0.5 rounded-sm">+    .LimitFlags = </div>
+          <div class="text-tide-success bg-tide-success/10 px-1 py-0.5 rounded-sm">+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;</div>
+          <div class="text-tide-text-secondary">   SetInformationJobObject(...)</div>
+        </div>
+
+        <div id="diff-content-agy" class="diff-view hidden space-y-1 font-mono text-[10px] bg-tide-bg p-2 rounded border border-tide-border overflow-hidden">
+          <div class="text-tide-accent font-bold flex items-center justify-between">
+            <span>src/agents.rs</span>
+            <span class="text-tide-muted text-[9px]">L112-L120</span>
+          </div>
+          <div class="text-tide-muted">@@ -112,4 +112,7 @@</div>
+          <div class="text-tide-danger bg-tide-danger/10 px-1 py-0.5 rounded-sm">-  pub is_done: bool,</div>
+          <div class="text-tide-success bg-tide-success/10 px-1 py-0.5 rounded-sm">+  pub confidence: Confidence,</div>
+          <div class="text-tide-success bg-tide-success/10 px-1 py-0.5 rounded-sm">+  pub session_token_usage: u64,</div>
+        </div>
+
+        <div id="diff-content-powershell" class="diff-view hidden space-y-1 font-mono text-[10px] bg-tide-bg p-2 rounded border border-tide-border overflow-hidden">
+          <div class="text-tide-muted py-4 text-center">
+            No active worktree branch for primary powershell host session.
+          </div>
+        </div>
+
+        <!-- Safe protocol pill -->
+        <div class="mt-3 p-2 rounded bg-tide-variant/40 border border-tide-border text-[10px] space-y-1">
+          <div class="text-tide-text font-bold flex items-center gap-1.5">
+            <span class="text-tide-success">🛡️</span>
+            <span>Hermetic Review Guard:</span>
+          </div>
+          <div class="text-tide-muted leading-relaxed">
+            TIDE never merges without human approval. Test runs and diff review prevent working-tree corruption.
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="space-y-2 pt-3 border-t border-tide-border">
+        <button id="btn-merge-action" class="w-full py-1.5 bg-tide-success/20 hover:bg-tide-success/35 text-tide-success border border-tide-success/50 rounded text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm">
+          <span>✓</span>
+          <span>Integrate Changes (Merge)</span>
+        </button>
+        <button id="btn-discard-action" class="w-full py-1 bg-tide-surface hover:bg-tide-danger/20 text-tide-muted hover:text-tide-danger border border-tide-border hover:border-tide-danger/50 rounded text-[10px] transition-all flex items-center justify-center gap-1">
+          <span>✕</span>
+          <span>Discard Worktree & Kill Tree</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Interactive Overlay: Command Palette Modal (^P) -->
+    <div id="modal-palette" class="hidden absolute inset-4 z-40 bg-tide-surface/95 backdrop-blur-md rounded border-2 border-tide-border-active shadow-2xl p-4 flex flex-col justify-between font-mono animate-fadeIn">
+      <div>
+        <div class="flex items-center justify-between pb-2 mb-3 border-b border-tide-border text-xs">
+          <span class="text-tide-accent font-bold flex items-center gap-2">
+            <span>⚡</span>
+            <span>TIDE Command Palette</span>
+          </span>
+          <span class="text-tide-muted text-[10px]">Press Esc or Click X to Close</span>
+        </div>
+        <div class="p-2 rounded bg-tide-bg border border-tide-border mb-3 flex items-center gap-2">
+          <span class="text-tide-accent font-bold">&gt;</span>
+          <input
+            id="palette-search"
+            type="text"
+            placeholder="Search commands, agents, or worktrees..."
+            class="w-full bg-transparent border-none outline-none text-tide-text text-xs"
+          />
+        </div>
+        <div class="space-y-1 text-xs" id="palette-items">
+          <div class="p-2 rounded bg-tide-variant/60 hover:bg-tide-tab-active-bg text-tide-text cursor-pointer flex items-center justify-between">
+            <span class="font-semibold">&gt; Spawn Agent: Google Antigravity CLI</span>
+            <kbd class="text-[10px] text-tide-accent">^A</kbd>
+          </div>
+          <div class="p-2 rounded hover:bg-tide-variant text-tide-text-secondary cursor-pointer flex items-center justify-between">
+            <span>&gt; Spawn Agent: Anthropic Claude Code</span>
+            <kbd class="text-[10px] text-tide-muted">claude</kbd>
+          </div>
+          <div class="p-2 rounded hover:bg-tide-variant text-tide-text-secondary cursor-pointer flex items-center justify-between">
+            <span>&gt; Open Diff Inspection Viewer</span>
+            <kbd class="text-[10px] text-tide-accent">^G</kbd>
+          </div>
+          <div class="p-2 rounded hover:bg-tide-variant text-tide-text-secondary cursor-pointer flex items-center justify-between">
+            <span>&gt; Toggle 60 FPS PTY Frame Pacer</span>
+            <span class="text-[10px] text-tide-success">ENABLED</span>
+          </div>
+          <div class="p-2 rounded hover:bg-tide-variant text-tide-text-secondary cursor-pointer flex items-center justify-between">
+            <span>&gt; Inspect Windows Job Object Handle Limits</span>
+            <span class="text-[10px] text-tide-muted">KILL_ON_CLOSE</span>
+          </div>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-tide-border flex items-center justify-between text-[10px] text-tide-muted">
+        <span>Use ↑ ↓ to navigate • Enter to select</span>
+        <button id="modal-palette-close" class="text-tide-accent font-bold hover:underline">Close [Esc]</button>
+      </div>
+    </div>
+
+    <!-- Interactive Overlay: Full Diff Review Modal (^G) -->
+    <div id="modal-diff" class="hidden absolute inset-4 z-40 bg-tide-surface/98 backdrop-blur-md rounded border-2 border-tide-border-active shadow-2xl p-4 flex flex-col justify-between font-mono animate-fadeIn">
+      <div>
+        <div class="flex items-center justify-between pb-2 mb-3 border-b border-tide-border text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-tide-accent font-bold">🔍 Diff Inspector</span>
+            <span class="text-tide-muted">::</span>
+            <span class="text-tide-text">tide/job-objects ➔ main</span>
+          </div>
+          <span class="text-tide-success font-bold text-[10px]">+14 lines / -2 lines</span>
+        </div>
+        <div class="p-3 bg-tide-bg rounded border border-tide-border font-mono text-[11px] space-y-1 overflow-y-auto max-h-[300px]">
+          <div class="text-tide-accent font-bold">diff --git a/src/job_object.rs b/src/job_object.rs</div>
+          <div class="text-tide-muted">index 42f1b0a..88d011c 100644</div>
+          <div class="text-tide-text-secondary">--- a/src/job_object.rs</div>
+          <div class="text-tide-text-secondary">+++ b/src/job_object.rs</div>
+          <div class="text-tide-muted">@@ -34,8 +34,14 @@ impl WindowsJobObject &#123;</div>
+          <div class="text-tide-text-secondary">&nbsp;&nbsp;unsafe fn configure_limits(handle: HANDLE) -&gt; Result&lt;()&gt; &#123;</div>
+          <div class="text-tide-danger bg-tide-danger/15 px-1">-&nbsp;&nbsp;&nbsp;&nbsp;let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();</div>
+          <div class="text-tide-danger bg-tide-danger/15 px-1">-&nbsp;&nbsp;&nbsp;&nbsp;info.BasicLimitInformation.LimitFlags = 0;</div>
+          <div class="text-tide-success bg-tide-success/15 px-1">+&nbsp;&nbsp;&nbsp;&nbsp;let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();</div>
+          <div class="text-tide-success bg-tide-success/15 px-1">+&nbsp;&nbsp;&nbsp;&nbsp;// Guarantee NT Kernel kills all grandchildren on handle drop</div>
+          <div class="text-tide-success bg-tide-success/15 px-1">+&nbsp;&nbsp;&nbsp;&nbsp;info.BasicLimitInformation.LimitFlags =</div>
+          <div class="text-tide-success bg-tide-success/15 px-1">+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;</div>
+          <div class="text-tide-success bg-tide-success/15 px-1">+&nbsp;&nbsp;&nbsp;&nbsp;SetInformationJobObject(handle, JobObjectExtendedLimitInformation, ...)?;</div>
+          <div class="text-tide-text-secondary">&nbsp;&nbsp;&nbsp;&nbsp;Ok(())</div>
+          <div class="text-tide-text-secondary">&nbsp;&nbsp;&#125;</div>
+        </div>
+      </div>
+      <div class="pt-3 border-t border-tide-border flex items-center justify-between text-xs">
+        <button id="modal-diff-merge" class="px-3 py-1.5 bg-tide-success/20 text-tide-success border border-tide-success rounded font-bold hover:bg-tide-success/30 transition-all">
+          ✓ Approve & Merge into main
+        </button>
+        <button id="modal-diff-close" class="px-3 py-1 bg-tide-variant text-tide-muted hover:text-tide-text rounded border border-tide-border">
+          Close [Esc]
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Terminal Bottom Status Bar -->
+  <div class="h-6 bg-tide-variant border-t border-tide-border flex items-center justify-between px-3 text-[10px] text-tide-text-secondary font-mono">
+    <div class="flex items-center gap-3">
+      <span class="px-1.5 py-0.2 bg-tide-accent text-tide-bg font-bold rounded-sm">NORMAL</span>
+      <span>Session: <strong class="text-tide-text" id="status-session-name">claude-runner</strong></span>
+      <span class="text-tide-muted hidden sm:inline">|</span>
+      <span class="hidden sm:inline">Status: <span id="status-session-badge" class="text-tide-success font-bold">● CONFIRMED (Exit 0)</span></span>
+    </div>
+    <div class="flex items-center gap-2.5 text-tide-muted">
+      <button id="status-btn-palette" class="hover:text-tide-accent transition-colors"><kbd class="text-tide-accent font-bold">^P</kbd>:Palette</button>
+      <button id="status-btn-diff" class="hover:text-tide-accent transition-colors"><kbd class="text-tide-accent font-bold">^G</kbd>:Diff</button>
+      <span class="hidden md:inline"><kbd class="text-tide-accent font-bold">^B</kbd>:Files</span>
+      <span class="hidden md:inline"><kbd class="text-tide-accent font-bold">Alt+1..3</kbd>:Panes</span>
+    </div>
+  </div>
+</div>
+
+<!-- Interactive Client-side Script for Terminal Mockup -->
+<script>
+  // Elements
+  const tabButtons = document.querySelectorAll('.terminal-tab-btn');
+  const worktreeCards = document.querySelectorAll('.worktree-card');
+  const sessionViews = document.querySelectorAll('.session-view');
+  const diffViews = document.querySelectorAll('.diff-view');
+  const statusSessionName = document.getElementById('status-session-name');
+  const statusSessionBadge = document.getElementById('status-session-badge');
+  const terminalBranch = document.getElementById('terminal-branch');
+  const diffBranchLabel = document.getElementById('diff-branch-label');
+
+  // Modals
+  const modalPalette = document.getElementById('modal-palette');
+  const modalDiff = document.getElementById('modal-diff');
+  const btnPalette = document.getElementById('term-btn-palette');
+  const statusBtnPalette = document.getElementById('status-btn-palette');
+  const modalPaletteClose = document.getElementById('modal-palette-close');
+  const btnFullDiff = document.getElementById('term-btn-full-diff');
+  const statusBtnDiff = document.getElementById('status-btn-diff');
+  const modalDiffClose = document.getElementById('modal-diff-close');
+  const modalDiffMerge = document.getElementById('modal-diff-merge');
+
+  // Interactive buttons
+  const btnMergeAction = document.getElementById('btn-merge-action');
+  const btnDiscardAction = document.getElementById('btn-discard-action');
+  const termInputBox = document.getElementById('term-input-box') as HTMLInputElement | null;
+  const cmdPills = document.querySelectorAll('.cmd-pill');
+
+  function switchSession(sessionId: string) {
+    // Update tabs
+    tabButtons.forEach(btn => {
+      const target = btn.getAttribute('data-tab-id');
+      if (target === sessionId) {
+        btn.className = 'terminal-tab-btn active px-3 py-1 bg-tide-tab-active-bg text-tide-tab-active-fg border border-tide-border-active flex items-center gap-1.5 font-bold shadow-sm transition-all';
+      } else {
+        btn.className = 'terminal-tab-btn px-3 py-1 bg-tide-variant text-tide-text-secondary hover:text-tide-text border border-tide-border flex items-center gap-1.5 transition-all';
+      }
+    });
+
+    // Update worktree card highlights
+    worktreeCards.forEach(card => {
+      const target = card.getAttribute('data-target');
+      if (target === sessionId) {
+        card.classList.add('bg-tide-tab-active-bg/25', 'border-tide-border-active');
+        card.classList.remove('bg-tide-variant/30');
+      } else {
+        card.classList.remove('bg-tide-tab-active-bg/25', 'border-tide-border-active');
+        card.classList.add('bg-tide-variant/30');
+      }
+    });
+
+    // Show corresponding terminal output
+    sessionViews.forEach(view => view.classList.add('hidden'));
+    const targetView = document.getElementById(`session-output-${sessionId}`);
+    if (targetView) targetView.classList.remove('hidden');
+
+    // Show corresponding diff
+    diffViews.forEach(d => d.classList.add('hidden'));
+    const targetDiff = document.getElementById(`diff-content-${sessionId}`);
+    if (targetDiff) targetDiff.classList.remove('hidden');
+
+    // Update bottom status bar
+    if (sessionId === 'claude') {
+      if (statusSessionName) statusSessionName.textContent = 'claude-runner';
+      if (statusSessionBadge) {
+        statusSessionBadge.textContent = '● CONFIRMED (Exit 0)';
+        statusSessionBadge.className = 'text-tide-success font-bold';
+      }
+      if (terminalBranch) terminalBranch.textContent = 'git:(tide/job-objects)';
+      if (diffBranchLabel) diffBranchLabel.textContent = 'tide/job-objects';
+    } else if (sessionId === 'agy') {
+      if (statusSessionName) statusSessionName.textContent = 'agy-worker';
+      if (statusSessionBadge) {
+        statusSessionBadge.textContent = '● WAIT_INPUT (y/N)';
+        statusSessionBadge.className = 'text-tide-warning font-bold';
+      }
+      if (terminalBranch) terminalBranch.textContent = 'git:(tide/refactor-ast)';
+      if (diffBranchLabel) diffBranchLabel.textContent = 'tide/refactor-ast';
+    } else {
+      if (statusSessionName) statusSessionName.textContent = 'powershell';
+      if (statusSessionBadge) {
+        statusSessionBadge.textContent = '● IDLE (Host ConPTY)';
+        statusSessionBadge.className = 'text-tide-muted font-bold';
+      }
+      if (terminalBranch) terminalBranch.textContent = 'git:(main)';
+      if (diffBranchLabel) diffBranchLabel.textContent = 'main (clean)';
+    }
+  }
+
+  // Tab button listeners
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.getAttribute('data-tab-id');
+      if (tabId) switchSession(tabId);
+    });
+  });
+
+  // Worktree card click listeners
+  worktreeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const target = card.getAttribute('data-target');
+      if (target) switchSession(target);
+    });
+  });
+
+  // Palette modal handlers
+  function openPalette() {
+    if (modalPalette) {
+      modalPalette.classList.remove('hidden');
+      const search = document.getElementById('palette-search');
+      if (search) search.focus();
+    }
+  }
+  function closePalette() {
+    if (modalPalette) modalPalette.classList.add('hidden');
+  }
+  btnPalette?.addEventListener('click', openPalette);
+  statusBtnPalette?.addEventListener('click', openPalette);
+  modalPaletteClose?.addEventListener('click', closePalette);
+
+  // Diff modal handlers
+  function openDiffModal() {
+    if (modalDiff) modalDiff.classList.remove('hidden');
+  }
+  function closeDiffModal() {
+    if (modalDiff) modalDiff.classList.add('hidden');
+  }
+  btnFullDiff?.addEventListener('click', openDiffModal);
+  statusBtnDiff?.addEventListener('click', openDiffModal);
+  modalDiffClose?.addEventListener('click', closeDiffModal);
+
+  // Merge Action simulation
+  function simulateMerge() {
+    const origText = btnMergeAction?.innerHTML || '';
+    if (btnMergeAction) {
+      btnMergeAction.innerHTML = '<span>⏳</span><span>Merging tide/job-objects...</span>';
+      setTimeout(() => {
+        btnMergeAction.innerHTML = '<span>✓</span><span class="text-tide-accent">Cleanly Merged into main!</span>';
+        if (terminalBranch) terminalBranch.textContent = 'git:(main) [Synced]';
+        setTimeout(() => {
+          if (btnMergeAction) btnMergeAction.innerHTML = origText;
+          closeDiffModal();
+        }, 2000);
+      }, 700);
+    }
+  }
+  btnMergeAction?.addEventListener('click', simulateMerge);
+  modalDiffMerge?.addEventListener('click', simulateMerge);
+
+  // Discard Action simulation
+  btnDiscardAction?.addEventListener('click', () => {
+    const origText = btnDiscardAction?.innerHTML || '';
+    if (btnDiscardAction) {
+      btnDiscardAction.innerHTML = '<span>⚡</span><span>NT Kernel Teardown in progress...</span>';
+      setTimeout(() => {
+        btnDiscardAction.innerHTML = '<span>✕</span><span>Worktree & 4 PIDs Killed!</span>';
+        setTimeout(() => {
+          if (btnDiscardAction) btnDiscardAction.innerHTML = origText;
+        }, 1800);
+      }, 500);
+    }
+  });
+
+  // Preset command pills
+  cmdPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const cmd = pill.getAttribute('data-cmd');
+      if (cmd && termInputBox) {
+        termInputBox.value = cmd;
+        termInputBox.focus();
+      }
+    });
+  });
+
+  // Enter in input box
+  termInputBox?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const val = termInputBox.value.trim();
+      if (!val) return;
+      termInputBox.value = '';
+      termInputBox.placeholder = `Executed: "${val}" (Output buffered in PTY)`;
+      setTimeout(() => {
+        if (termInputBox) termInputBox.placeholder = 'type any shell or agent command...';
+      }, 2500);
+    }
+  });
+
+  // Global keydown within page
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.key === 'Escape') {
+      closePalette();
+      closeDiffModal();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      openPalette();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+      e.preventDefault();
+      openDiffModal();
+    }
+  });
+</script>

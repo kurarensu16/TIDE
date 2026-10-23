@@ -1,0 +1,133 @@
+---
+// SectionCompatibility.astro - 06 / COMPATIBILITY (Plain-English Edition)
+---
+
+<section id="compatibility" class="py-20 border-b border-tide-border bg-tide-bg relative scroll-mt-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- DevThread-style section label -->
+    <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
+      06 / COMPATIBILITY
+    </div>
+
+    <!-- 2-Column Split -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+      
+      <!-- Left Column: Big Headline & Narrative -->
+      <div class="lg:col-span-5 space-y-4">
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono">
+          Plugs into your existing setup.
+        </h2>
+        <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans">
+          No complex dependencies, no heavy web runtimes to install. TIDE works with the coding agents, repositories, and command lines you already use today.
+        </p>
+        <div class="pt-2">
+          <a
+            href="/docs"
+            class="text-xs font-mono text-tide-accent hover:underline flex items-center gap-1"
+          >
+            <span>View technical setup & documentation</span>
+            <span>↗</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Right Column: Evidence Status Rows (DevThread Style) -->
+      <div class="lg:col-span-7 divide-y divide-tide-border">
+        
+        <!-- Row 1: AI Agent CLIs -->
+        <div class="py-5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-tide-text font-mono">
+              Any AI Coding Agent CLI
+            </h3>
+            <p class="text-xs text-tide-text-secondary font-sans mt-0.5">
+              Works seamlessly with Claude Code, Antigravity, Aider, Codex, or custom terminal scripts
+            </p>
+            <div class="text-[11px] text-tide-muted font-mono mt-1">
+              Configured via simple tide.toml commands
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-tide-success/10 border border-tide-success/30 text-tide-success font-mono text-xs font-bold shrink-0 self-start sm:self-center">
+            ✓ Any CLI
+          </span>
+        </div>
+
+        <!-- Row 2: Standard Git -->
+        <div class="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-tide-text font-mono">
+              Standard Git Repositories
+            </h3>
+            <p class="text-xs text-tide-text-secondary font-sans mt-0.5">
+              Works with any repo using Git 2.30+. Zero repository changes or custom hooks needed
+            </p>
+            <div class="text-[11px] text-tide-muted font-mono mt-1">
+              Standard Git worktrees &middot; safe branches
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-tide-success/10 border border-tide-success/30 text-tide-success font-mono text-xs font-bold shrink-0 self-start sm:self-center">
+            ✓ Ready
+          </span>
+        </div>
+
+        <!-- Row 3: Windows Native -->
+        <div class="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-tide-text font-mono">
+              Windows 10 & 11 x86_64
+            </h3>
+            <p class="text-xs text-tide-text-secondary font-sans mt-0.5">
+              Built natively for Windows with operating-system level process containment
+            </p>
+            <div class="text-[11px] text-tide-muted font-mono mt-1">
+              Tested on Windows 11 Build 22631+
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-tide-success/10 border border-tide-success/30 text-tide-success font-mono text-xs font-bold shrink-0 self-start sm:self-center">
+            ✓ Verified
+          </span>
+        </div>
+
+        <!-- Row 4: Starts in under 0.5s -->
+        <div class="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-tide-text font-mono">
+              Instant Startup (&lt;0.5s)
+            </h3>
+            <p class="text-xs text-tide-text-secondary font-sans mt-0.5">
+              Cold boots in under 480 milliseconds. Single standalone portable binary
+            </p>
+            <div class="text-[11px] text-tide-muted font-mono mt-1">
+              Zero launch wait time
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-tide-accent/10 border border-tide-accent/30 text-tide-accent font-mono text-xs font-bold shrink-0 self-start sm:self-center">
+            ✓ &lt;0.5s Startup
+          </span>
+        </div>
+
+        <!-- Row 5: Memory -->
+        <div class="py-5 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-tide-text font-mono">
+              Uses Only ~14 MB RAM
+            </h3>
+            <p class="text-xs text-tide-text-secondary font-sans mt-0.5">
+              Unlike Electron apps that eat 800MB+ of RAM, TIDE runs on a tiny footprint
+            </p>
+            <div class="text-[11px] text-tide-muted font-mono mt-1">
+              Pure Rust binary &middot; zero Chromium overhead
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-tide-variant border border-tide-border text-tide-text font-mono text-xs font-bold shrink-0 self-start sm:self-center">
+            ✓ ~14 MB RAM
+          </span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>

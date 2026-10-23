@@ -167,7 +167,7 @@ impl TerminalSession {
             }
         }
 
-        let parser = Arc::new(Mutex::new(vt100::Parser::new(rows, cols, 1000)));
+        let parser = Arc::new(Mutex::new(vt100::Parser::new(rows, cols, 5000)));
         let writer = Arc::new(Mutex::new(pair.master.take_writer()?));
         let mut reader = pair.master.try_clone_reader()?;
 
@@ -242,5 +242,110 @@ impl TerminalSession {
         if let Ok(mut parser) = self.parser.lock() {
             parser.set_size(rows, cols);
         }
+    }
+
+    /// Stops the running process tree in this terminal session gracefully (Ctrl+C) and via Job Object.
+    pub fn stop(&self) {
+        let _ = self.write_input(&[3, 3]);
+        self._job.terminate();
+        if let Ok(mut alive) = self.is_alive.lock() {
+            *alive = false;
+        }
+    }
+
+    /// Scrolls the virtual viewport upward into historical terminal output.
+    pub fn scroll_up(&self, lines: usize) {
+        if let Ok(mut parser) = self.parser.lock() {
+            let current = parser.screen().scrollback();
+            parser.set_scrollback(current + lines);
+        }
+    }
+
+    /// Scrolls the virtual viewport downward toward live terminal output.
+    pub fn scroll_down(&self, lines: usize) {
+        if let Ok(mut parser) = self.parser.lock() {
+            let current = parser.screen().scrollback();
+            parser.set_scrollback(current.saturating_sub(lines));
+        }
+    }
+
+    /// Resets the virtual viewport to 0 (live active terminal view).
+    pub fn scroll_reset(&self) {
+        if let Ok(mut parser) = self.parser.lock() {
+            if parser.screen().scrollback() > 0 {
+                parser.set_scrollback(0);
+            }
+        }
+    }
+
+    /// Returns the current scrollback offset (0 = live view).
+    pub fn scrollback(&self) -> usize {
+        if let Ok(parser) = self.parser.lock() {
+            parser.screen().scrollback()
+        } else {
+            0
+        }
+    }
+
+    /// Returns whether the terminal is running in alternate screen buffer mode (e.g. vim, htop, less).
+    pub fn is_alternate_screen(&self) -> bool {
+        if let Ok(parser) = self.parser.lock() {
+            parser.screen().alternate_screen()
+        } else {
+            false
+        }
+    }
+
+    /// Returns the active mouse protocol mode of the terminal session.
+    pub fn mouse_protocol_mode(&self) -> vt100::MouseProtocolMode {
+        if let Ok(parser) = self.parser.lock() {
+            parser.screen().mouse_protocol_mode()
+        } else {
+            vt100::MouseProtocolMode::None
+        }
+    }
+
+    /// Dispatches mouse scroll wheel event: passes through to alternate-screen apps or scrolls history.
+    pub fn handle_mouse_scroll(&self, up: bool, col: u16, row: u16) {
+        let is_alt = self.is_alternate_screen();
+        let mouse_mode = self.mouse_protocol_mode();
+
+        if mouse_mode != vt100::MouseProtocolMode::None {
+            // SGR mouse encoding (xterm): button 64 for wheel up, 65 for wheel down
+            let btn = if up { 64 } else { 65 };
+            let seq = format!("\x1b[<{};{};{}M", btn, col.max(1), row.max(1));
+            let _ = self.write_input(seq.as_bytes());
+        } else if is_alt {
+            // Standard terminal behavior in pagers (less/man/nano/vi): send 3x Up/Down arrow sequences
+            let seq = if up { b"\x1b[A\x1b[A\x1b[A" } else { b"\x1b[B\x1b[B\x1b[B" };
+            let _ = self.write_input(seq);
+        } else {
+            // Shell command history scrollback
+            if up {
+                self.scroll_up(3);
+            } else {
+                self.scroll_down(3);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_vt100_screen_api() {
+        let mut parser = vt100::Parser::new(5, 80, 100);
+        // Write 10 lines of text so 5 scroll into scrollback
+        for i in 1..=10 {
+            parser.process(format!("line {}\r\n", i).as_bytes());
+        }
+        assert_eq!(parser.screen().scrollback(), 0);
+        parser.set_scrollback(3);
+        assert_eq!(parser.screen().scrollback(), 3);
+        parser.set_scrollback(0);
+        assert_eq!(parser.screen().scrollback(), 0);
+        let mode = parser.screen().mouse_protocol_mode();
+        assert_eq!(mode, vt100::MouseProtocolMode::None);
+        assert_eq!(parser.screen().alternate_screen(), false);
     }
 }

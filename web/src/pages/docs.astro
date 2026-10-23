@@ -1,0 +1,520 @@
+---
+// docs.astro - TIDE Technical Architecture & Systems Documentation
+import '../styles/global.css';
+import WaveLogo from '../components/WaveLogo.astro';
+import Footer from '../components/Footer.astro';
+import ShortcutsModal from '../components/ShortcutsModal.astro';
+---
+
+<!doctype html>
+<html lang="en" data-theme="tide-ocean" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Documentation — TIDE Terminal Workspace</title>
+    <meta
+      name="description"
+      content="Official technical documentation, architecture specifications, API references, and tide.toml configuration guides for TIDE."
+    />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-tide-bg text-tide-text font-mono antialiased selection:bg-tide-accent/20 selection:text-tide-accent scanlines min-h-screen flex flex-col">
+    
+    <!-- Top Docs Navigation Bar -->
+    <header class="sticky top-0 z-50 border-b border-tide-border bg-tide-surface/90 backdrop-blur-md transition-colors w-full">
+      <div class="w-full px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between relative">
+        
+        <!-- Left: Brand & Docs Badge -->
+        <div class="flex items-center gap-3 z-10">
+          <a href="/" class="flex items-center group">
+            <span class="font-bold text-lg tracking-widest text-tide-text group-hover:text-tide-accent transition-colors font-mono">
+              TIDE
+            </span>
+          </a>
+          <span class="text-tide-muted text-xs select-none">/</span>
+          <span class="text-xs font-bold text-tide-accent font-mono tracking-wider">
+            DOCS
+          </span>
+        </div>
+
+        <!-- Center Search Box -->
+        <div class="hidden md:flex items-center w-72 lg:w-96 absolute left-1/2 -translate-x-1/2">
+          <span class="absolute left-3 text-tide-muted text-xs select-none">🔍</span>
+          <input
+            id="docs-search-input"
+            type="text"
+            placeholder="Search docs, CLI flags, config..."
+            class="w-full bg-tide-bg border border-tide-border focus:border-tide-border-active rounded px-8 py-1.5 text-xs text-tide-text outline-none font-mono placeholder:text-tide-muted transition-all"
+          />
+          <kbd class="absolute right-2.5 px-1 py-0.2 text-[9px] bg-tide-variant border border-tide-border text-tide-muted rounded font-mono select-none">
+            Ctrl+K
+          </kbd>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-3 text-xs font-mono">
+          <a href="/" class="hover:text-tide-accent text-tide-text-secondary transition-colors hidden sm:inline">
+            ← Home
+          </a>
+          <a
+            href="https://github.com/sadia/TIDE"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-1.5 px-3 py-1 border border-tide-border hover:border-tide-border-active bg-tide-surface text-tide-text rounded font-mono hover:text-tide-accent transition-all"
+          >
+            <span>GitHub</span>
+          </a>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Docs Layout: Sidebar + Main Content + Right TOC -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Sidebar Navigation (3 cols) -->
+        <aside class="lg:col-span-3">
+          <div class="sticky top-20 space-y-6 font-mono text-xs max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
+            
+            <!-- Group 1: Getting Started -->
+            <div>
+              <div class="text-[11px] font-bold uppercase tracking-wider text-tide-accent mb-2 pb-1 border-b border-tide-border flex items-center justify-between">
+                <span>01. Getting Started</span>
+              </div>
+              <ul class="space-y-1 text-tide-text-secondary">
+                <li><a href="#introduction" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Introduction</a></li>
+                <li><a href="#installation" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Installation Channels</a></li>
+                <li><a href="#quickstart" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Quickstart & Launch</a></li>
+                <li><a href="#requirements" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">System Requirements</a></li>
+              </ul>
+            </div>
+
+            <!-- Group 2: Core Architecture -->
+            <div>
+              <div class="text-[11px] font-bold uppercase tracking-wider text-tide-accent mb-2 pb-1 border-b border-tide-border flex items-center justify-between">
+                <span>02. Systems Architecture</span>
+              </div>
+              <ul class="space-y-1 text-tide-text-secondary">
+                <li><a href="#worktrees" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Worktree Isolation</a></li>
+                <li><a href="#job-objects" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Windows NT Job Objects</a></li>
+                <li><a href="#pty-engine" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">60 FPS ConPTY Engine</a></li>
+                <li><a href="#telemetry" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Honest Telemetry</a></li>
+              </ul>
+            </div>
+
+            <!-- Group 3: Agent Orchestration -->
+            <div>
+              <div class="text-[11px] font-bold uppercase tracking-wider text-tide-accent mb-2 pb-1 border-b border-tide-border flex items-center justify-between">
+                <span>03. Agent Adapters</span>
+              </div>
+              <ul class="space-y-1 text-tide-text-secondary">
+                <li><a href="#adapter-concept" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Adapter Specification</a></li>
+                <li><a href="#agy-adapter" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Antigravity CLI (agy)</a></li>
+                <li><a href="#claude-adapter" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Anthropic Claude Code</a></li>
+                <li><a href="#custom-adapters" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Custom Build & Test Scripts</a></li>
+              </ul>
+            </div>
+
+            <!-- Group 4: Configuration & Shortcuts -->
+            <div>
+              <div class="text-[11px] font-bold uppercase tracking-wider text-tide-accent mb-2 pb-1 border-b border-tide-border flex items-center justify-between">
+                <span>04. Reference</span>
+              </div>
+              <ul class="space-y-1 text-tide-text-secondary">
+                <li><a href="#tide-toml-spec" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">tide.toml Schema</a></li>
+                <li><a href="#keybindings-ref" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">Keybindings Cheatsheet</a></li>
+                <li><a href="#cli-flags" class="doc-nav-link block py-1 px-2 rounded hover:bg-tide-variant hover:text-tide-accent transition-colors">CLI Flag Reference</a></li>
+              </ul>
+            </div>
+
+          </div>
+        </aside>
+
+        <!-- Center Main Content (7 cols) -->
+        <main class="lg:col-span-7 space-y-16 font-sans text-sm text-tide-text-secondary leading-relaxed">
+          
+          <!-- Introduction -->
+          <section id="introduction" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Chapter 01
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight text-tide-text font-mono">
+              Introduction to TIDE
+            </h1>
+            <p>
+              <strong>TIDE</strong> (Terminal Integrated Development Environment) is a native, keyboard-first terminal workspace engineered in Rust for developers orchestrating multiple autonomous AI coding agents in parallel.
+            </p>
+            <p>
+              Unlike traditional terminal multiplexers (tmux, screen) or heavy Electron wrappers, TIDE treats AI agent CLIs as mission-critical subprocesses with strict OS-kernel, memory, and filesystem boundaries. Every agent runs in a dedicated Git worktree branch, protected by Windows NT Kernel Job Objects to prevent zombie processes and working-tree corruption.
+            </p>
+
+            <div class="p-4 rounded-lg bg-tide-surface border border-tide-border font-mono text-xs space-y-2">
+              <div class="text-tide-text font-bold">Core Engineering Highlights:</div>
+              <ul class="space-y-1.5 text-tide-text-secondary">
+                <li class="flex items-center gap-2"><span class="text-tide-success">✓</span> Built with Ratatui & Crossterm in Rust (Edition 2024)</li>
+                <li class="flex items-center gap-2"><span class="text-tide-success">✓</span> Hardened Windows process-tree cleanup (<code class="text-tide-accent">JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code>)</li>
+                <li class="flex items-center gap-2"><span class="text-tide-success">✓</span> 60 Hz frame-paced VT100 virtual terminal parser over ConPTY</li>
+                <li class="flex items-center gap-2"><span class="text-tide-success">✓</span> 14 MB idle binary footprint (0 MB Chromium / V8 bloat)</li>
+              </ul>
+            </div>
+          </section>
+
+          <!-- Installation -->
+          <section id="installation" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Installation
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              Installation Channels
+            </h2>
+            <p>
+              TIDE is distributed as a single standalone executable with zero dynamic runtime dependencies. Choose your preferred distribution channel:
+            </p>
+
+            <!-- Channel 1: Cargo Git Install -->
+            <div class="space-y-2">
+              <h3 class="text-base font-bold text-tide-text font-mono">1. Cargo (Direct Git Install)</h3>
+              <p class="text-xs">Install directly from the official GitHub repository into your Cargo bin path (requires Rust 1.82+):</p>
+              <div class="p-3 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
+                <code class="text-tide-accent">cargo install --git https://github.com/sadia/TIDE</code>
+                <button class="copy-doc-btn px-2 py-0.5 rounded bg-tide-variant text-[11px] text-tide-muted hover:text-tide-text" data-copy="cargo install --git https://github.com/sadia/TIDE">Copy</button>
+              </div>
+            </div>
+
+            <!-- Channel 2: Build from source -->
+            <div class="space-y-2 pt-2">
+              <h3 class="text-base font-bold text-tide-text font-mono">2. Build from Source</h3>
+              <p class="text-xs">Clone the repository and compile an optimized release binary locally:</p>
+              <div class="p-3 rounded bg-tide-surface border border-tide-border font-mono text-xs space-y-1">
+                <div>git clone https://github.com/sadia/TIDE.git</div>
+                <div>cd TIDE</div>
+                <div class="text-tide-accent font-bold">cargo build --release</div>
+              </div>
+              <p class="text-[11px] text-tide-muted font-mono">Output binary: target/release/tide.exe</p>
+            </div>
+
+            <!-- Channel 3: Prebuilt Binaries -->
+            <div class="space-y-2 pt-2">
+              <h3 class="text-base font-bold text-tide-text font-mono">3. Prebuilt Standalone Binaries</h3>
+              <p class="text-xs">Download signed portable executables directly from the official GitHub releases without needing a local Rust toolchain:</p>
+              <div class="p-3 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
+                <span class="text-tide-text">Windows x86_64 Portable Executable</span>
+                <a href="https://github.com/sadia/TIDE/releases" target="_blank" class="text-tide-accent hover:underline flex items-center gap-1">
+                  <span>GitHub Releases</span>
+                  <span>&rarr;</span>
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <!-- Quickstart & Launch -->
+          <section id="quickstart" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Quickstart
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              Quickstart & Launch
+            </h2>
+            <p>
+              Launch TIDE from any Git repository root directory. TIDE automatically discovers project files, initializes the primary ConPTY terminal, and verifies the Windows NT Job Object subsystem:
+            </p>
+            <div class="p-3 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
+              <code class="text-tide-success">tide .</code>
+              <button class="copy-doc-btn px-2 py-0.5 rounded bg-tide-variant text-[11px] text-tide-muted hover:text-tide-text" data-copy="tide .">Copy</button>
+            </div>
+            <p>
+              Upon launch, press <kbd class="px-1.5 py-0.5 rounded bg-tide-surface border border-tide-border font-mono text-xs text-tide-accent">Ctrl+P</kbd> to open the Command Palette, or <kbd class="px-1.5 py-0.5 rounded bg-tide-surface border border-tide-border font-mono text-xs text-tide-accent">Ctrl+A</kbd> to spawn your first parallel agent session in an isolated worktree.
+            </p>
+          </section>
+
+          <!-- Worktree Isolation -->
+          <section id="worktrees" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Chapter 02: Systems
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              Git Worktree Isolation Engine
+            </h2>
+            <p>
+              When multiple autonomous agents edit files directly on disk, they inevitably overwrite each other's work and produce unresolvable merge conflicts. TIDE creates an isolated Git worktree for every child session:
+            </p>
+            <div class="p-4 rounded bg-tide-surface border border-tide-border font-mono text-xs space-y-2">
+              <div class="text-tide-muted">// Worktree Creation Command issued by src/worktree.rs</div>
+              <div class="text-tide-text">git worktree add -b tide/agy-1 .tide/worktrees/agy-1</div>
+              <div class="text-tide-accent">// Automated Bootstrapping Hook</div>
+              <div class="text-tide-text-secondary">mklink /D .tide/worktrees/agy-1/target C:\Users\sadia\TIDE\target</div>
+              <div class="text-tide-text-secondary">copy .env .tide/worktrees/agy-1\.env</div>
+            </div>
+            <p>
+              Because each agent operates on its own dedicated worktree directory, your primary working tree remains 100% clean. When an agent finishes, you inspect the diff with <kbd class="px-1.5 py-0.5 rounded bg-tide-surface border border-tide-border font-mono text-xs text-tide-accent">Ctrl+G</kbd> and merge or discard with a single keystroke.
+            </p>
+          </section>
+
+          <!-- Windows NT Job Objects -->
+          <section id="job-objects" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Kernel Teardown
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              Windows NT Job Objects Lifecycle
+            </h2>
+            <p>
+              Standard <code class="text-tide-text font-mono">Child::kill()</code> or <code class="text-tide-text font-mono">SIGTERM</code> on Windows only signals the root shell process. If the agent spawned compiler watchers (<code class="text-tide-text font-mono">cargo watch</code>) or dev servers, those grandchild processes survive as orphaned zombies, holding mandatory file locks that prevent Git from switching branches.
+            </p>
+            <p>
+              TIDE registers an OS-level Windows Job Object with extended limit flags:
+            </p>
+            <div class="p-4 rounded bg-tide-surface border border-tide-border font-mono text-xs space-y-1.5 overflow-x-auto">
+              <div class="text-tide-muted">// src/job_object.rs</div>
+              <div>let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe &#123; zeroed() &#125;;</div>
+              <div class="text-tide-accent font-bold">info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;</div>
+              <div>SetInformationJobObject(handle, JobObjectExtendedLimitInformation, &info, size);</div>
+              <div>AssignProcessToJobObject(handle, child_process_handle);</div>
+            </div>
+            <p>
+              When you close an agent session or exit TIDE, the Windows NT kernel terminates the entire process tree instantly down to the last grandchild. Zero file locks, zero leaked RAM.
+            </p>
+          </section>
+
+          <!-- 60 FPS PTY Engine -->
+          <section id="pty-engine" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // ConPTY
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              60 FPS Frame-Paced PTY Engine
+            </h2>
+            <p>
+              When an agent executes verbose compiler dumps or test suites emitting 100,000 lines of ANSI sequences per second, naive TUIs attempt to redraw the terminal on every packet, locking keystroke input.
+            </p>
+            <p>
+              TIDE decouples the PTY reader onto an independent background thread updating an in-memory virtual terminal grid (<code class="text-tide-text font-mono">vt100</code>). Dirty state notifications are coalesced and rendered at a locked 60 FPS (16.6ms frame pacing). Keystroke latency stays under 25ms at all times.
+            </p>
+          </section>
+
+          <!-- Configuration: tide.toml -->
+          <section id="tide-toml-spec" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Chapter 04: Configuration
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              Configuration Specification (tide.toml)
+            </h2>
+            <p>
+              TIDE is configured via declarative TOML at <code class="text-tide-accent font-mono">~/.config/tide/tide.toml</code> or local <code class="text-tide-accent font-mono">.tide/tide.toml</code>:
+            </p>
+            <div class="p-4 rounded bg-tide-surface border border-tide-border font-mono text-xs overflow-x-auto leading-relaxed">
+              <pre class="text-[11px] sm:text-xs">
+<span class="text-tide-muted"># Workspace Runtime Configuration</span>
+<span class="text-tide-accent">[workspace]</span>
+theme = <span class="text-tide-success">"tide-ocean"</span>       <span class="text-tide-muted"># tide-ocean, tokyo-night, catppuccin-mocha, nord, gruvbox-dark, cyberpunk</span>
+fps_cap = <span class="text-tide-warning">60</span>                 <span class="text-tide-muted"># UI render loop cap (Hz)</span>
+windows_job_objects = <span class="text-tide-warning">true</span>   <span class="text-tide-muted"># Enforce NT Kernel Job Teardown</span>
+
+<span class="text-tide-muted"># Worktree Bootstrapping Protocol</span>
+<span class="text-tide-accent">[worktree]</span>
+symlink_env = <span class="text-tide-warning">true</span>          <span class="text-tide-muted"># Automatically link untracked .env to worktrees</span>
+share_cargo_target = <span class="text-tide-warning">true</span>   <span class="text-tide-muted"># Symlink CARGO_TARGET_DIR for sub-second builds</span>
+branch_prefix = <span class="text-tide-success">"tide/"</span>
+
+<span class="text-tide-muted"># Adapter: Google Antigravity CLI</span>
+<span class="text-tide-accent">[[agents.adapters]]</span>
+name = <span class="text-tide-success">"Antigravity CLI (agy)"</span>
+command = <span class="text-tide-success">"agy"</span>
+args = [<span class="text-tide-success">"--workspace"</span>, <span class="text-tide-success">"&#123;worktree&#125;"</span>]
+isolation = <span class="text-tide-success">"worktree"</span>
+prompt_hints = [<span class="text-tide-success">"Confirm [y/N]"</span>, <span class="text-tide-success">"Select option"</span>]
+
+<span class="text-tide-muted"># Adapter: Anthropic Claude Code</span>
+<span class="text-tide-accent">[[agents.adapters]]</span>
+name = <span class="text-tide-success">"Claude Code"</span>
+command = <span class="text-tide-success">"claude"</span>
+args = [<span class="text-tide-success">"--dangerously-skip-permissions"</span>]
+isolation = <span class="text-tide-success">"worktree"</span>
+              </pre>
+            </div>
+          </section>
+
+          <!-- Keybindings Cheatsheet -->
+          <section id="keybindings-ref" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Controls
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              Keybindings Cheatsheet
+            </h2>
+            <div class="rounded-lg border border-tide-border bg-tide-surface overflow-hidden font-mono text-xs">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-tide-border bg-tide-variant/60 text-tide-text uppercase text-[11px]">
+                    <th class="p-3 font-bold">Shortcut</th>
+                    <th class="p-3 font-bold">Action</th>
+                    <th class="p-3 font-bold">Scope</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-tide-border text-tide-text-secondary text-[11px]">
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">Ctrl + P</kbd></td>
+                    <td class="p-3 text-tide-text">Open Command Palette (Fuzzy Search)</td>
+                    <td class="p-3 text-tide-muted">Global</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">Ctrl + G</kbd></td>
+                    <td class="p-3 text-tide-text">Open Diff Review & Integration Gate</td>
+                    <td class="p-3 text-tide-muted">Global</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">Ctrl + B</kbd></td>
+                    <td class="p-3 text-tide-text">Toggle File Tree Explorer Pane</td>
+                    <td class="p-3 text-tide-muted">Global</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">Ctrl + A</kbd></td>
+                    <td class="p-3 text-tide-text">Launch New Agent Session Modal</td>
+                    <td class="p-3 text-tide-muted">Global</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">Alt + 1..3</kbd></td>
+                    <td class="p-3 text-tide-text">Focus Panes (1: Explorer, 2: Terminal, 3: Diff)</td>
+                    <td class="p-3 text-tide-muted">Global</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">1 .. 6</kbd></td>
+                    <td class="p-3 text-tide-text">Instant Theme Switcher</td>
+                    <td class="p-3 text-tide-muted">Global</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">Ctrl + O</kbd></td>
+                    <td class="p-3 text-tide-text">Open File at Cursor in External Editor ($EDITOR)</td>
+                    <td class="p-3 text-tide-muted">Explorer / Diff</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-bold text-tide-accent"><kbd class="px-1.5 py-0.5 rounded bg-tide-bg border border-tide-border">Esc</kbd></td>
+                    <td class="p-3 text-tide-text">Close Modal / Return Focus to Terminal</td>
+                    <td class="p-3 text-tide-muted">Modals</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- CLI Flags -->
+          <section id="cli-flags" class="doc-section scroll-mt-20 space-y-4">
+            <div class="font-mono text-xs uppercase tracking-widest text-tide-accent font-bold">
+              // Reference
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-tide-text font-mono">
+              CLI Flag Reference
+            </h2>
+            <div class="p-4 rounded bg-tide-surface border border-tide-border font-mono text-xs space-y-2">
+              <div class="flex items-start gap-2">
+                <code class="text-tide-accent font-bold">tide [PATH]</code>
+                <span class="text-tide-text-secondary">— Open TIDE in specified directory (defaults to current dir).</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <code class="text-tide-accent font-bold">--config &lt;FILE&gt;</code>
+                <span class="text-tide-text-secondary">— Override default tide.toml location.</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <code class="text-tide-accent font-bold">--inspect-jobs</code>
+                <span class="text-tide-text-secondary">— Dump active NT Job Objects and child process tree.</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <code class="text-tide-accent font-bold">--version, -V</code>
+                <span class="text-tide-text-secondary">— Print version information.</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <code class="text-tide-accent font-bold">--help, -h</code>
+                <span class="text-tide-text-secondary">— Print full help guide.</span>
+              </div>
+            </div>
+          </section>
+
+        </main>
+
+        <!-- Right Sidebar: On This Page Table of Contents (2 cols) -->
+        <aside class="hidden lg:block lg:col-span-2">
+          <div class="sticky top-20 space-y-3 font-mono text-xs">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-tide-muted pb-1 border-b border-tide-border">
+              On This Page
+            </div>
+            <nav id="toc-nav" class="space-y-1.5 text-[11px] text-tide-muted">
+              <a href="#introduction" class="toc-link block hover:text-tide-accent transition-colors">Introduction</a>
+              <a href="#installation" class="toc-link block hover:text-tide-accent transition-colors">Installation</a>
+              <a href="#quickstart" class="toc-link block hover:text-tide-accent transition-colors">Quickstart</a>
+              <a href="#worktrees" class="toc-link block hover:text-tide-accent transition-colors">Worktree Isolation</a>
+              <a href="#job-objects" class="toc-link block hover:text-tide-accent transition-colors">NT Job Objects</a>
+              <a href="#pty-engine" class="toc-link block hover:text-tide-accent transition-colors">60 FPS PTY Engine</a>
+              <a href="#tide-toml-spec" class="toc-link block hover:text-tide-accent transition-colors">tide.toml Schema</a>
+              <a href="#keybindings-ref" class="toc-link block hover:text-tide-accent transition-colors">Keybindings</a>
+              <a href="#cli-flags" class="toc-link block hover:text-tide-accent transition-colors">CLI Flags</a>
+            </nav>
+
+            <div class="pt-4 border-t border-tide-border text-[10px] text-tide-muted space-y-1">
+              <div>Need help?</div>
+              <a href="https://github.com/sadia/TIDE/issues" target="_blank" class="text-tide-accent hover:underline block">Open GitHub Issue →</a>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <Footer />
+
+    <!-- Shortcuts Modal -->
+    <ShortcutsModal />
+
+    <!-- Copy doc code script & Search highlight script -->
+    <script>
+      const copyBtns = document.querySelectorAll('.copy-doc-btn');
+      copyBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const text = btn.getAttribute('data-copy');
+          if (text) {
+            navigator.clipboard.writeText(text);
+            const orig = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.classList.add('text-tide-success');
+            setTimeout(() => {
+              btn.textContent = orig;
+              btn.classList.remove('text-tide-success');
+            }, 1800);
+          }
+        });
+      });
+
+      // Quick Search input filter
+      const searchInput = document.getElementById('docs-search-input') as HTMLInputElement | null;
+      searchInput?.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase().trim();
+        const sections = document.querySelectorAll('.doc-section');
+        sections.forEach((sec) => {
+          const text = (sec as HTMLElement).innerText.toLowerCase();
+          if (!query || text.includes(query)) {
+            (sec as HTMLElement).style.display = '';
+          } else {
+            (sec as HTMLElement).style.display = 'none';
+          }
+        });
+      });
+
+      // Hotkey Ctrl+K to focus search
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          searchInput?.focus();
+        }
+      });
+    </script>
+  </body>
+</html>

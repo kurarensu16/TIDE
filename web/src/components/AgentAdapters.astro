@@ -1,0 +1,100 @@
+---
+// AgentAdapters.astro
+---
+
+<section id="config" class="py-20 border-b border-tide-border bg-tide-bg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mb-12">
+      <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-2">
+        // Agent Adapters & Config
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-tide-text mb-4">
+        Any CLI. Zero proprietary lock-in.
+      </h2>
+      <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed">
+        TIDE is not tied to one AI provider. It orchestrates any command-line agent installed on your machine through declarative adapter profiles in <code class="text-tide-accent">tide.toml</code>.
+      </p>
+    </div>
+
+    <!-- 2 Column: Left = Config snippet, Right = Supported ecosystem -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 font-mono">
+      <!-- TOML Config Box -->
+      <div class="lg:col-span-7 rounded-lg border border-tide-border bg-tide-surface overflow-hidden">
+        <div class="h-8 bg-tide-variant border-b border-tide-border flex items-center justify-between px-3 text-xs">
+          <span class="text-tide-text font-bold">~/.config/tide/tide.toml</span>
+          <span class="text-tide-muted text-[10px]">Serde TOML Specification</span>
+        </div>
+        <div class="p-4 text-xs text-tide-text-secondary overflow-x-auto leading-relaxed">
+          <pre class="font-mono text-[11px] sm:text-xs">
+<span class="text-tide-muted"># Global Workspace Runtime</span>
+<span class="text-tide-accent">[workspace]</span>
+theme = <span class="text-tide-success">"tide-ocean"</span>
+fps_cap = <span class="text-tide-warning">60</span>
+windows_job_objects = <span class="text-tide-warning">true</span>
+
+<span class="text-tide-muted"># Worktree Bootstrapping Hooks</span>
+<span class="text-tide-accent">[worktree]</span>
+symlink_env = <span class="text-tide-warning">true</span>
+share_cargo_target = <span class="text-tide-warning">true</span>
+branch_prefix = <span class="text-tide-success">"tide/"</span>
+
+<span class="text-tide-muted"># Adapter: Google Antigravity CLI</span>
+<span class="text-tide-accent">[[agents.adapters]]</span>
+name = <span class="text-tide-success">"Antigravity CLI (agy)"</span>
+command = <span class="text-tide-success">"agy"</span>
+args = [<span class="text-tide-success">"--workspace"</span>, <span class="text-tide-success">"&#123;worktree&#125;"</span>]
+isolation = <span class="text-tide-success">"worktree"</span>
+prompt_hints = [<span class="text-tide-success">"Confirm [y/N]"</span>, <span class="text-tide-success">"Select option"</span>]
+
+<span class="text-tide-muted"># Adapter: Anthropic Claude Code</span>
+<span class="text-tide-accent">[[agents.adapters]]</span>
+name = <span class="text-tide-success">"Claude Code"</span>
+command = <span class="text-tide-success">"claude"</span>
+args = [<span class="text-tide-success">"--dangerously-skip-permissions"</span>]
+isolation = <span class="text-tide-success">"worktree"</span>
+
+<span class="text-tide-muted"># Custom Script / Test Runner</span>
+<span class="text-tide-accent">[[agents.adapters]]</span>
+name = <span class="text-tide-success">"Parallel Fuzz Runner"</span>
+command = <span class="text-tide-success">"cargo"</span>
+args = [<span class="text-tide-success">"test"</span>, <span class="text-tide-success">"--"</span>, <span class="text-tide-success">"--nocapture"</span>]
+isolation = <span class="text-tide-success">"worktree"</span>
+          </pre>
+        </div>
+      </div>
+
+      <!-- Right Column: Adapter Features -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="p-5 rounded-lg border border-tide-border bg-tide-surface text-xs space-y-2">
+          <div class="flex items-center gap-2 text-tide-accent font-bold">
+            <span>●</span>
+            <span>CLI Agnostic Execution</span>
+          </div>
+          <p class="text-tide-text-secondary leading-relaxed font-sans">
+            Whether you use Antigravity, Claude Code, Aider, Codex, Goose, or your own proprietary internal agent binary, TIDE wraps it transparently behind a standard ConPTY / PTY interface.
+          </p>
+        </div>
+
+        <div class="p-5 rounded-lg border border-tide-border bg-tide-surface text-xs space-y-2">
+          <div class="flex items-center gap-2 text-tide-success font-bold">
+            <span>●</span>
+            <span>Interpolated Worktree Paths</span>
+          </div>
+          <p class="text-tide-text-secondary leading-relaxed font-sans">
+            Use template variables like <code class="text-tide-text font-mono">&#123;worktree&#125;</code> and <code class="text-tide-text font-mono">&#123;branch&#125;</code> in launch arguments. TIDE injects isolated paths automatically at spawn time.
+          </p>
+        </div>
+
+        <div class="p-5 rounded-lg border border-tide-border bg-tide-surface text-xs space-y-2">
+          <div class="flex items-center gap-2 text-tide-warning font-bold">
+            <span>●</span>
+            <span>External Editor Interop</span>
+          </div>
+          <p class="text-tide-text-secondary leading-relaxed font-sans">
+            Need to jump into a file an agent changed? Press <kbd class="px-1 py-0.5 bg-tide-variant border border-tide-border rounded text-tide-text font-mono">Ctrl+O</kbd> to open the exact file and cursor position in your native VS Code or Neovim instance.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

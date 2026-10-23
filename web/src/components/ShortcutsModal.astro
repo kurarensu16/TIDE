@@ -1,0 +1,89 @@
+---
+// ShortcutsModal.astro - TIDE Keybinding & Cheatsheet Modal
+const shortcuts = [
+  { key: "Ctrl + P", desc: "Open Command Palette (Fuzzy command finder)" },
+  { key: "Ctrl + G", desc: "Open Diff Inspection Viewer & Merge Gate" },
+  { key: "Ctrl + B", desc: "Toggle File Tree Explorer Pane" },
+  { key: "Ctrl + A", desc: "Launch New Coding Agent Session" },
+  { key: "Alt + 1..3", desc: "Switch Active Pane Focus (Explorer / Terminal / Diff)" },
+  { key: "F2", desc: "Open Theme Selector Modal" },
+  { key: "1 .. 6", desc: "Instant Theme Quick Switch" },
+  { key: "Ctrl + O", desc: "Open Current File in External Editor (VS Code / Neovim)" },
+  { key: "Esc", desc: "Close Active Modal / Return Focus to Terminal" },
+  { key: "?", desc: "Show / Hide This Keybindings Cheatsheet" },
+];
+---
+
+<div
+  id="shortcuts-modal"
+  class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 font-mono select-none animate-fadeIn"
+>
+  <div class="w-full max-w-lg rounded-lg border-2 border-tide-border-active bg-tide-surface shadow-2xl p-5 overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-3 mb-4 border-b border-tide-border text-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-tide-accent font-bold">⌨️ TIDE Keybindings Cheatsheet</span>
+      </div>
+      <button id="close-shortcuts-modal" class="text-tide-muted hover:text-tide-text text-sm font-bold px-2 py-0.5 rounded hover:bg-tide-variant">
+        ✕
+      </button>
+    </div>
+
+    <!-- Shortcuts List -->
+    <div class="space-y-2 text-xs mb-4">
+      {shortcuts.map((s) => (
+        <div class="flex items-center justify-between p-2 rounded bg-tide-bg border border-tide-border hover:border-tide-border-active transition-colors">
+          <kbd class="px-2 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold text-[11px] shadow-sm">
+            {s.key}
+          </kbd>
+          <span class="text-tide-text-secondary text-[11px] font-sans text-right">
+            {s.desc}
+          </span>
+        </div>
+      ))}
+    </div>
+
+    <!-- Footer info -->
+    <div class="pt-3 border-t border-tide-border flex items-center justify-between text-[10px] text-tide-muted">
+      <span>Native Ratatui Event Loop</span>
+      <span>Press <kbd class="px-1 py-0.5 bg-tide-variant text-tide-text rounded border border-tide-border font-mono">Esc</kbd> to dismiss</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const shortcutsModal = document.getElementById('shortcuts-modal');
+  const openShortcutsBtn = document.getElementById('open-shortcuts-btn');
+  const closeShortcutsModal = document.getElementById('close-shortcuts-modal');
+
+  function toggleModal() {
+    if (shortcutsModal) {
+      shortcutsModal.classList.toggle('hidden');
+    }
+  }
+
+  function closeModal() {
+    if (shortcutsModal && !shortcutsModal.classList.contains('hidden')) {
+      shortcutsModal.classList.add('hidden');
+    }
+  }
+
+  openShortcutsBtn?.addEventListener('click', toggleModal);
+  closeShortcutsModal?.addEventListener('click', closeModal);
+
+  // Click outside to close
+  shortcutsModal?.addEventListener('click', (e) => {
+    if (e.target === shortcutsModal) closeModal();
+  });
+
+  // Keydown listener for '?' and 'Esc'
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      toggleModal();
+    }
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+</script>

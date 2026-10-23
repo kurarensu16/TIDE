@@ -1,0 +1,73 @@
+---
+// SectionProblem.astro - 01 / THE PROBLEM (Plain-English Edition)
+---
+
+<section id="the-problem" class="py-20 border-b border-tide-border bg-tide-bg relative scroll-mt-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- DevThread-style section label -->
+    <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
+      01 / THE PROBLEM
+    </div>
+
+    <!-- 2-Column Split -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+      
+      <!-- Left Column: Big Headline & Narrative -->
+      <div class="lg:col-span-5 space-y-4">
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono">
+          Juggling terminals and agents is chaos.
+        </h2>
+        <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans">
+          Flipping between five terminal tabs, VS Code, and Git apps just to monitor AI coding agents is exhausting. Without an integrated terminal workspace, agents collide and clutter your system.
+        </p>
+      </div>
+
+      <!-- Right Column: 3 Numbered Problem Blocks with Dividers -->
+      <div class="lg:col-span-7 divide-y divide-tide-border">
+        
+        <!-- Problem 01 -->
+        <div class="py-6 first:pt-0 space-y-2">
+          <div class="flex items-baseline gap-3">
+            <span class="text-xs font-mono font-bold text-tide-accent">01</span>
+            <h3 class="text-base sm:text-lg font-bold text-tide-text font-mono">
+              Agents overwrite each other's work
+            </h3>
+          </div>
+          <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed pl-7 font-sans">
+            If two agents edit files at the same time, one accidentally erases what the other just built. You get broken code, locked index files (<code class="text-tide-danger font-mono">.git/index.lock</code>), and messy Git conflicts that take hours to untangle.
+          </p>
+        </div>
+
+        <!-- Problem 02 -->
+        <div class="py-6 space-y-2">
+          <div class="flex items-baseline gap-3">
+            <span class="text-xs font-mono font-bold text-tide-accent">02</span>
+            <h3 class="text-base sm:text-lg font-bold text-tide-text font-mono">
+              Ghost servers keep running in the background
+            </h3>
+          </div>
+          <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed pl-7 font-sans">
+            Agents frequently start background test runners, file watchers, and web servers. When you close the terminal, Windows doesn't always kill them—leaving invisible phantom processes that drain your RAM and block ports like <code class="text-tide-text font-mono">localhost:3000</code>.
+          </p>
+        </div>
+
+        <!-- Problem 03 -->
+        <div class="py-6 last:pb-0 space-y-2">
+          <div class="flex items-baseline gap-3">
+            <span class="text-xs font-mono font-bold text-tide-accent">03</span>
+            <h3 class="text-base sm:text-lg font-bold text-tide-text font-mono">
+              Endless build logs freeze your terminal
+            </h3>
+          </div>
+          <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed pl-7 font-sans">
+            When an agent runs a heavy test suite or compiler command, thousands of lines of output flood your terminal window, causing standard terminals to stutter, lag behind, and stop responding to your keystrokes.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>

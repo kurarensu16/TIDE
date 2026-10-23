@@ -1,0 +1,42 @@
+---
+// AnsiWaveLogo.astro
+import logoData from './logo_data.json';
+
+interface Props {
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  glow?: boolean;
+}
+
+const { size = 'md', glow = true } = Astro.props;
+
+const sizeClasses = {
+  xs: 'text-[6px] leading-[6px] tracking-[-1px]',
+  sm: 'text-[9px] leading-[9px] tracking-[-1.5px]',
+  md: 'text-[12px] leading-[12px] tracking-[-2px] sm:text-[14px] sm:leading-[14px]',
+  lg: 'text-[14px] leading-[14px] tracking-[-2px] sm:text-[18px] sm:leading-[18px] sm:tracking-[-2.5px]',
+};
+---
+
+<div
+  class:list={[
+    'font-mono select-none inline-block whitespace-pre',
+    sizeClasses[size],
+    glow && 'drop-shadow-[0_0_12px_rgba(56,189,248,0.35)]',
+  ]}
+  style="font-family: 'JetBrains Mono', 'Courier New', monospace; font-variant-ligatures: none;"
+>
+  {logoData.map((line) => (
+    <div>
+      {line.map((span) => (
+        <span
+          style={{
+            color: span.fg || 'transparent',
+            backgroundColor: span.bg || 'transparent',
+          }}
+        >
+          {span.ch}
+        </span>
+      ))}
+    </div>
+  ))}
+</div>

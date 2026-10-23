@@ -1,0 +1,146 @@
+---
+// InstallSection.astro
+---
+
+<section id="install" class="py-20 border-b border-tide-border bg-tide-bg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mb-12">
+      <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-2">
+        // Installation & Quickstart
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-tide-text mb-4">
+        Ready in seconds. Single standalone binary.
+      </h2>
+      <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed">
+        Choose your preferred distribution channel. TIDE has zero dynamic runtime dependencies.
+      </p>
+    </div>
+
+    <!-- Installation Tabs -->
+    <div class="max-w-4xl rounded-lg border border-tide-border bg-tide-surface overflow-hidden font-mono text-xs">
+      <!-- Tabs header -->
+      <div class="h-10 bg-tide-variant border-b border-tide-border flex items-center px-2 gap-1 overflow-x-auto" id="install-tabs">
+        <button data-tab="cargo" class="install-tab-btn px-3 py-1.5 rounded-t bg-tide-bg border-t border-x border-tide-border-active text-tide-accent font-bold transition-all">
+          Cargo (Git)
+        </button>
+        <button data-tab="source" class="install-tab-btn px-3 py-1.5 text-tide-text-secondary hover:text-tide-text transition-all">
+          Build from Source
+        </button>
+        <button data-tab="releases" class="install-tab-btn px-3 py-1.5 text-tide-text-secondary hover:text-tide-text transition-all">
+          Prebuilt Binaries
+        </button>
+      </div>
+
+      <!-- Tab Content Panels -->
+      <div class="p-6">
+        <!-- Cargo Tab -->
+        <div id="tab-cargo" class="install-panel space-y-4">
+          <div class="text-tide-text-secondary">
+            Install directly from the official GitHub repository into your Cargo binary path:
+          </div>
+          <div class="flex items-center justify-between p-3 rounded bg-tide-bg border border-tide-border group">
+            <code class="text-tide-accent text-sm select-all">cargo install --git https://github.com/sadia/TIDE</code>
+            <button class="copy-cmd-btn px-2.5 py-1 rounded bg-tide-variant border border-tide-border text-tide-muted hover:text-tide-text text-xs transition-colors" data-copy="cargo install --git https://github.com/sadia/TIDE">
+              Copy
+            </button>
+          </div>
+          <div class="text-[11px] text-tide-muted flex items-center justify-between">
+            <span>Requires Rust 1.82+ with 2024 edition support.</span>
+            <span>Installs to: <code class="text-tide-text">~/.cargo/bin/tide.exe</code></span>
+          </div>
+        </div>
+
+        <!-- Source Tab -->
+        <div id="tab-source" class="install-panel hidden space-y-4">
+          <div class="text-tide-text-secondary">
+            Clone the repository and build an optimized release binary:
+          </div>
+          <div class="p-3 rounded bg-tide-bg border border-tide-border space-y-1 text-tide-text">
+            <div>git clone https://github.com/sadia/TIDE.git</div>
+            <div>cd TIDE</div>
+            <div class="text-tide-accent font-bold">cargo build --release</div>
+          </div>
+          <div class="text-[11px] text-tide-muted">
+            The compiled binary will be located at <code class="text-tide-text">target/release/tide.exe</code>.
+          </div>
+        </div>
+
+        <!-- Releases Tab -->
+        <div id="tab-releases" class="install-panel hidden space-y-4">
+          <div class="text-tide-text-secondary">
+            Download standalone portable executables directly from GitHub Releases:
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <a href="https://github.com/sadia/TIDE/releases" target="_blank" class="p-3 rounded border border-tide-border hover:border-tide-border-active bg-tide-bg hover:bg-tide-variant/40 transition-all flex items-center justify-between">
+              <div>
+                <div class="font-bold text-tide-text">Windows x86_64 (.zip)</div>
+                <div class="text-[10px] text-tide-muted">Standalone tide.exe with icon</div>
+              </div>
+              <span class="text-tide-accent">↓</span>
+            </a>
+            <a href="https://github.com/sadia/TIDE/releases" target="_blank" class="p-3 rounded border border-tide-border hover:border-tide-border-active bg-tide-bg hover:bg-tide-variant/40 transition-all flex items-center justify-between opacity-75">
+              <div>
+                <div class="font-bold text-tide-text">Linux / macOS (Preview)</div>
+                <div class="text-[10px] text-tide-muted">In development (Phase 4)</div>
+              </div>
+              <span class="text-tide-muted">Roadmap</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Launch Snippet -->
+      <div class="p-4 bg-tide-variant/30 border-t border-tide-border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="text-tide-text-secondary">
+          <span class="text-tide-muted">Launch any workspace:</span> <code class="text-tide-accent font-bold">tide .</code>
+        </div>
+        <div class="flex items-center gap-2 text-tide-muted text-[11px]">
+          <span>Requirements: Git 2.30+</span>
+          <span>•</span>
+          <span>Windows 10/11</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Tab switching script
+  const tabButtons = document.querySelectorAll('.install-tab-btn');
+  const panels = document.querySelectorAll('.install-panel');
+  const copyButtons = document.querySelectorAll('.copy-cmd-btn');
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+
+      // Update button styles
+      tabButtons.forEach(b => {
+        b.className = 'install-tab-btn px-3 py-1.5 text-tide-text-secondary hover:text-tide-text transition-all';
+      });
+      btn.className = 'install-tab-btn px-3 py-1.5 rounded-t bg-tide-bg border-t border-x border-tide-border-active text-tide-accent font-bold transition-all';
+
+      // Show target panel
+      panels.forEach(p => p.classList.add('hidden'));
+      const activePanel = document.getElementById(`tab-${tab}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+    });
+  });
+
+  // Copy command script
+  copyButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.getAttribute('data-copy');
+      if (text) {
+        navigator.clipboard.writeText(text);
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('text-tide-success');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('text-tide-success');
+        }, 1800);
+      }
+    });
+  });
+</script>

@@ -10,7 +10,7 @@ use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
 #[cfg(windows)]
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, CreateJobObjectW, SetInformationJobObject,
-    JobObjectExtendedLimitInformation,
+    JobObjectExtendedLimitInformation, TerminateJobObject,
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
 };
 #[cfg(windows)]
@@ -75,6 +75,22 @@ impl JobObject {
         #[cfg(not(windows))]
         {
             Ok(())
+        }
+    }
+
+    /// Terminate all child processes assigned to this Job Object.
+    pub fn terminate(&self) -> bool {
+        #[cfg(windows)]
+        {
+            if !self.handle.is_null() && self.handle != INVALID_HANDLE_VALUE {
+                unsafe { TerminateJobObject(self.handle, 1) != 0 }
+            } else {
+                false
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            true
         }
     }
 }

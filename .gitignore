@@ -4,3 +4,7 @@ err.txt
 out.txt
 .tide/
 
+# Website artifacts
+web/node_modules/
+web/dist/
+web/.astro/

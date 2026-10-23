@@ -1,0 +1,123 @@
+---
+// SectionConcreteWorkspace.astro - 04 / LIVE PREVIEW (Plain-English Edition)
+import TerminalMockup from '../TerminalMockup.astro';
+---
+
+<section id="workspace" class="py-20 border-b border-tide-border bg-tide-surface/20 relative scroll-mt-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- DevThread-style section label -->
+    <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
+      04 / LIVE PREVIEW
+    </div>
+
+    <!-- Header Row -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+      <div>
+        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono">
+          An integrated workspace.<br />
+          Keyboard-first & fast.
+        </h2>
+      </div>
+      <div class="flex items-center gap-2 font-mono text-xs">
+        <span class="px-2.5 py-1 rounded bg-tide-variant border border-tide-border text-tide-text-secondary">
+          Click tabs or buttons below to interact
+        </span>
+      </div>
+    </div>
+
+    <!-- 2-Column Side-by-Side: Developer Prompt / Status (Left) + Interactive Ratatui Terminal (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Column: Developer Prompt & Active Session Telemetry (4 cols) -->
+      <div class="lg:col-span-4 space-y-5">
+        
+        <!-- DevThread-style "Developer prompt" box -->
+        <div class="p-5 rounded-lg border border-tide-border bg-tide-surface font-mono text-xs space-y-3">
+          <div class="text-[11px] text-tide-muted uppercase tracking-wider">
+            Quick start command
+          </div>
+          <div class="text-sm font-bold text-tide-accent p-2.5 rounded bg-tide-bg border border-tide-border">
+            &gt; tide .
+          </div>
+          <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
+            Scans your Git project, prepares isolated copies for your agents, and loads your favorite AI tools.
+          </p>
+        </div>
+
+        <!-- Session Status & Evidence Box -->
+        <div class="p-5 rounded-lg border border-tide-border bg-tide-surface font-mono text-xs space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-tide-border text-[11px] text-tide-muted">
+            <span>Live Workspace</span>
+            <span class="text-tide-success flex items-center gap-1 font-bold">
+              <span class="w-2 h-2 rounded-full bg-tide-success animate-pulse"></span>
+              3 Agents Active
+            </span>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="p-2.5 rounded bg-tide-bg border border-tide-border flex items-center justify-between text-xs">
+              <span class="font-bold text-tide-text">[1] agy (Antigravity)</span>
+              <span class="px-1.5 py-0.5 rounded bg-tide-success/10 text-tide-success text-[10px] font-bold">Writing Tests</span>
+            </div>
+            <div class="p-2.5 rounded bg-tide-bg border border-tide-border flex items-center justify-between text-xs">
+              <span class="font-bold text-tide-text">[2] claude (Claude Code)</span>
+              <span class="px-1.5 py-0.5 rounded bg-tide-accent/10 text-tide-accent text-[10px] font-bold">Refactoring</span>
+            </div>
+            <div class="p-2.5 rounded bg-tide-bg border border-tide-border flex items-center justify-between text-xs">
+              <span class="font-bold text-tide-text">[3] powershell (Host)</span>
+              <span class="px-1.5 py-0.5 rounded bg-tide-muted/20 text-tide-text-secondary text-[10px]">Idle</span>
+            </div>
+          </div>
+
+          <!-- Plain-English Badges -->
+          <div class="pt-2 border-t border-tide-border space-y-1.5 text-[11px]">
+            <div class="flex items-center gap-2 text-tide-text-secondary font-sans">
+              <span class="text-tide-success font-bold font-mono">✓ Safe</span>
+              <span>Agents cannot overwrite each other's edits</span>
+            </div>
+            <div class="flex items-center gap-2 text-tide-text-secondary font-sans">
+              <span class="text-tide-success font-bold font-mono">✓ Guard</span>
+              <span>All background servers shut down automatically</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Hotkeys Strip -->
+        <div class="p-4 rounded-lg border border-tide-border bg-tide-surface text-[11px] font-mono text-tide-text-secondary space-y-1.5">
+          <div class="text-[10px] uppercase tracking-wider text-tide-muted font-bold mb-1">Keyboard shortcuts</div>
+          <div class="flex items-center justify-between">
+            <span>Switch Agent Tab</span>
+            <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold">Ctrl+Tab</kbd>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Compare Diffs</span>
+            <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold">Ctrl+G</kbd>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Command Menu</span>
+            <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold">Ctrl+P</kbd>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Interactive Ratatui Terminal Mockup (8 cols) -->
+      <div class="lg:col-span-8">
+        <div class="rounded-xl border border-tide-border bg-tide-surface p-1 shadow-2xl">
+          <div class="p-2 text-[11px] text-tide-muted font-mono flex items-center justify-between border-b border-tide-border mb-1">
+            <span class="flex items-center gap-2">
+              <span class="text-tide-accent font-bold">●</span>
+              <span class="text-tide-text font-bold">Interactive Terminal IDE Workspace</span>
+              <span class="text-[10px] hidden sm:inline text-tide-muted">(Click tabs or type below)</span>
+            </span>
+            <span class="text-tide-accent text-[10px]">Pure Rust &middot; 60 FPS</span>
+          </div>
+          <TerminalMockup />
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>

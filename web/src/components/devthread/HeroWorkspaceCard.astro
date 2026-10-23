@@ -1,0 +1,111 @@
+---
+// HeroWorkspaceCard.astro - Plain-English Live Session Status Board
+---
+
+<div class="rounded-xl border border-tide-border bg-tide-surface p-5 sm:p-6 shadow-2xl relative overflow-hidden group hover:border-tide-border-active transition-all font-mono text-xs">
+  
+  <!-- Ambient radial backlight glow -->
+  <div class="absolute -top-12 -right-12 w-64 h-64 bg-tide-accent/10 rounded-full blur-3xl pointer-events-none"></div>
+
+  <!-- Top Status Pill -->
+  <div class="flex items-center justify-between pb-3 mb-4 border-b border-tide-border text-[11px] text-tide-muted">
+    <div class="flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-tide-accent animate-pulse"></span>
+      <span class="text-tide-text font-bold">Active Workspace &middot; 3 agents running</span>
+    </div>
+    <span class="text-[10px] text-tide-success font-bold">
+      Protected
+    </span>
+  </div>
+
+  <!-- Flow Block 1: Main Project -->
+  <div class="p-3.5 rounded-lg border border-tide-border bg-tide-bg/80 space-y-1 relative">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-tide-accent font-bold">&gt;</span>
+        <span class="text-[10px] text-tide-muted uppercase tracking-wider">Your Main Repository</span>
+      </div>
+      <span class="px-2 py-0.5 rounded bg-tide-variant border border-tide-border text-[10px] text-tide-text-secondary font-bold">
+        Untouched
+      </span>
+    </div>
+    <div class="font-bold text-tide-text text-sm">
+      my-project/
+    </div>
+    <div class="text-[11px] text-tide-muted font-sans">
+      Main branch stays clean while agents code in private copies
+    </div>
+  </div>
+
+  <!-- Connecting Line with label -->
+  <div class="py-2.5 pl-6 flex items-center gap-2 text-[10px] text-tide-accent font-bold">
+    <span class="text-tide-muted font-normal select-none">│</span>
+    <span>&darr; Agent gets its own private workspace</span>
+  </div>
+
+  <!-- Flow Block 2: Private Sandbox -->
+  <div class="p-3.5 rounded-lg border border-tide-accent/40 bg-tide-surface/90 space-y-2 relative shadow-md">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-tide-accent font-bold">#</span>
+        <span class="text-[10px] text-tide-muted uppercase tracking-wider">Agent Sandbox</span>
+      </div>
+      <span class="px-2 py-0.5 rounded bg-tide-accent/10 border border-tide-accent/30 text-[10px] text-tide-accent font-bold">
+        Isolated
+      </span>
+    </div>
+    <div class="font-bold text-tide-text text-sm">
+      agent-claude/ &middot; refactoring auth
+    </div>
+
+    <div class="space-y-1.5 pt-2 border-t border-tide-border text-[11px]">
+      <div class="flex items-center justify-between text-tide-text-secondary">
+        <span class="font-sans text-tide-text">File isolation</span>
+        <span class="text-tide-success font-sans">Zero branch collisions</span>
+      </div>
+      <div class="flex items-center justify-between text-tide-text-secondary">
+        <span class="font-sans text-tide-text">Auto-cleanup guard</span>
+        <span class="text-tide-success font-sans">Kills background servers on exit</span>
+      </div>
+      <div class="flex items-center justify-between text-tide-text-secondary">
+        <span class="font-sans text-tide-text">Terminal pacing</span>
+        <span class="text-tide-muted font-sans">Smooth 60 FPS, zero screen lag</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connecting Line with label -->
+  <div class="py-2.5 pl-6 flex items-center gap-2 text-[10px] text-tide-accent font-bold">
+    <span class="text-tide-muted font-normal select-none">│</span>
+    <span>&darr; Review changes before anything merges</span>
+  </div>
+
+  <!-- Flow Block 3: Review & Merge -->
+  <div class="p-3.5 rounded-lg border border-tide-border bg-tide-bg/80 space-y-1.5">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-tide-success font-bold">&check;</span>
+        <span class="text-[10px] text-tide-muted uppercase tracking-wider">Side-by-side diff review</span>
+      </div>
+      <span class="px-2 py-0.5 rounded bg-tide-success/10 border border-tide-success/30 text-[10px] text-tide-success font-bold">
+        Ready
+      </span>
+    </div>
+    <div class="font-bold text-tide-text text-xs sm:text-sm font-sans">
+      Inspect what the agent wrote before approving
+    </div>
+    <div class="text-[11px] text-tide-text-secondary font-sans leading-relaxed">
+      Press <kbd class="px-1.5 py-0.2 rounded bg-tide-variant border border-tide-border text-tide-accent font-mono text-[10px]">Ctrl+G</kbd> in TIDE to approve changes and merge safely.
+    </div>
+  </div>
+
+  <!-- Condensed Bottom Strip -->
+  <div class="pt-4 mt-4 border-t border-tide-border flex items-center justify-between text-[11px] text-tide-muted font-sans">
+    <span>Condensed from live workspace session.</span>
+    <a href="#workspace" class="text-tide-accent hover:underline font-mono text-[11px] flex items-center gap-1">
+      <span>Interactive demo</span>
+      <span>&darr;</span>
+    </a>
+  </div>
+
+</div>

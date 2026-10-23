@@ -1,0 +1,117 @@
+---
+// SectionOpenSource.astro - 07 / GET STARTED (Plain-English Edition)
+---
+
+<section id="install" class="py-24 border-b border-tide-border bg-tide-surface/30 relative scroll-mt-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-20">
+    
+    <!-- Top Part: Open Source Headline & Links -->
+    <div>
+      <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
+        07 / GET STARTED
+      </div>
+
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono mb-3">
+            Open source & ready to run.
+          </h2>
+          <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed font-sans max-w-2xl">
+            <a href="https://github.com/sadia/TIDE/blob/main/LICENSE" target="_blank" class="text-tide-accent hover:underline">MIT / Apache-2.0 licensed</a> &middot; Built with pure Rust. Run it locally on your computer with complete privacy and zero telemetry tracking.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 shrink-0 font-mono text-xs">
+          <a
+            href="https://github.com/sadia/TIDE"
+            target="_blank"
+            class="px-4 py-2 rounded border border-tide-border bg-tide-surface hover:border-tide-border-active text-tide-text hover:text-tide-accent transition-all flex items-center gap-1.5"
+          >
+            <span>View on GitHub</span>
+            <span>↗</span>
+          </a>
+          <a
+            href="/docs"
+            class="px-4 py-2 rounded border border-tide-border bg-tide-surface hover:border-tide-border-active text-tide-text hover:text-tide-accent transition-all flex items-center gap-1.5"
+          >
+            <span>Documentation</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Part: Centered Call To Action (DevThread Layout) -->
+    <div class="max-w-3xl mx-auto text-center space-y-6 pt-10 border-t border-tide-border">
+      <div class="text-xs uppercase tracking-widest text-tide-muted font-mono">
+        INSTALL IN SECONDS WITH CARGO
+      </div>
+
+      <h3 class="text-3xl sm:text-5xl font-bold tracking-tight text-tide-text font-mono leading-tight">
+        Give your AI agents<br />
+        a proper workspace.
+      </h3>
+
+      <!-- 1-Click Copy Command Box -->
+      <div class="max-w-xl mx-auto p-2.5 rounded-lg border border-tide-border bg-tide-surface shadow-xl flex items-center justify-between font-mono text-xs group hover:border-tide-border-active transition-all">
+        <div class="flex items-center gap-2 truncate pl-2">
+          <span class="text-tide-accent select-none">&gt;</span>
+          <code class="text-tide-text select-all truncate font-bold text-xs sm:text-sm">
+            cargo install --git https://github.com/sadia/TIDE
+          </code>
+        </div>
+        <button
+          id="cta-copy-btn"
+          class="ml-2 px-3 py-1.5 rounded bg-tide-variant border border-tide-border text-tide-muted hover:text-tide-text text-xs transition-colors shrink-0"
+          data-copy="cargo install --git https://github.com/sadia/TIDE"
+        >
+          Copy
+        </button>
+      </div>
+
+      <!-- Toolchain footnote -->
+      <div class="text-[11px] text-tide-muted font-mono space-x-2">
+        <span>Rust 1.82+</span>
+        <span>&middot;</span>
+        <span>Windows 10/11 x86_64</span>
+        <span>&middot;</span>
+        <span>Single standalone executable</span>
+      </div>
+
+      <!-- Links row -->
+      <div class="pt-2 flex items-center justify-center gap-4 font-mono text-xs">
+        <a
+          href="/docs#install"
+          class="px-5 py-2.5 rounded bg-tide-accent text-tide-bg font-bold hover:brightness-110 transition-all flex items-center gap-1.5 shadow-md shadow-tide-accent/20"
+        >
+          <span>All Install Options</span>
+          <span>↗</span>
+        </a>
+        <a
+          href="/docs"
+          class="px-5 py-2.5 rounded border border-tide-border bg-tide-surface text-tide-text hover:text-tide-accent hover:border-tide-border-active transition-all"
+        >
+          Explore Docs &rarr;
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  const ctaCopyBtn = document.getElementById('cta-copy-btn');
+  ctaCopyBtn?.addEventListener('click', () => {
+    const text = ctaCopyBtn.getAttribute('data-copy');
+    if (text) {
+      navigator.clipboard.writeText(text);
+      const original = ctaCopyBtn.textContent;
+      ctaCopyBtn.textContent = 'Copied!';
+      ctaCopyBtn.classList.add('text-tide-success');
+      setTimeout(() => {
+        ctaCopyBtn.textContent = original;
+        ctaCopyBtn.classList.remove('text-tide-success');
+      }, 1800);
+    }
+  });
+</script>

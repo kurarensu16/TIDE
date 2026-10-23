@@ -1,0 +1,288 @@
+---
+// ThemePreviewer.astro - Interactive Native Theme Engine & ANSI Palette Lab
+const themes = [
+  {
+    id: "tide-ocean",
+    name: "TIDE Ocean",
+    desc: "Deep oceanic slate blue with vibrant cyan and electric wave accents",
+    key: "1",
+    swatches: ["#0f172a", "#38bdf8", "#a855f7", "#22c55e"],
+    promptFg: "#38bdf8",
+    statusFg: "#22c55e",
+    bg: "#0b0f19",
+    surface: "#0f172a",
+  },
+  {
+    id: "tokyo-night",
+    name: "Tokyo Night",
+    desc: "Clean midnight blue storm aesthetic with soft neon lavender & sky blue",
+    key: "2",
+    swatches: ["#1a1b26", "#7aa2f7", "#bb9af7", "#9ece6a"],
+    promptFg: "#7aa2f7",
+    statusFg: "#9ece6a",
+    bg: "#16161e",
+    surface: "#1a1b26",
+  },
+  {
+    id: "catppuccin-mocha",
+    name: "Catppuccin Mocha",
+    desc: "Soothing, luxurious dark pastel palette with mauve, lavender, and peach",
+    key: "3",
+    swatches: ["#1e1e2e", "#b4befe", "#74c7ec", "#a6e3a1"],
+    promptFg: "#b4befe",
+    statusFg: "#a6e3a1",
+    bg: "#11111b",
+    surface: "#1e1e2e",
+  },
+  {
+    id: "nord",
+    name: "Nord Arctic",
+    desc: "Arctic, north-bluish cold aesthetic with frost blues and polar snow tones",
+    key: "4",
+    swatches: ["#2e3440", "#88c0d0", "#8fbcbb", "#a3be8c"],
+    promptFg: "#88c0d0",
+    statusFg: "#a3be8c",
+    bg: "#242933",
+    surface: "#2e3440",
+  },
+  {
+    id: "gruvbox-dark",
+    name: "Gruvbox Dark",
+    desc: "Warm retro groove palette with golden amber, forest aqua, and burnt orange",
+    key: "5",
+    swatches: ["#282828", "#fabd2f", "#8ec07c", "#b8bb26"],
+    promptFg: "#fabd2f",
+    statusFg: "#b8bb26",
+    bg: "#1d2021",
+    surface: "#282828",
+  },
+  {
+    id: "cyberpunk",
+    name: "Cyberpunk Neon",
+    desc: "High-voltage synthwave with neon fuchsia pink, electric cyan, and laser yellow",
+    key: "6",
+    swatches: ["#18102c", "#05d9e8", "#ff2a6d", "#00ff9f"],
+    promptFg: "#05d9e8",
+    statusFg: "#00ff9f",
+    bg: "#0a0814",
+    surface: "#18102c",
+  },
+  {
+    id: "dracula",
+    name: "Dracula",
+    desc: "Gothic dark purple-charcoal with neon orchid pink, cyan, and lime accents",
+    key: "7",
+    swatches: ["#282a36", "#bd93f9", "#ff79c6", "#50fa7b"],
+    promptFg: "#bd93f9",
+    statusFg: "#50fa7b",
+    bg: "#1e1f29",
+    surface: "#282a36",
+  },
+  {
+    id: "rose-pine",
+    name: "Rosé Pine",
+    desc: "Alluring dark pine dusk palette with blush rose, lilac iris, and foam gold",
+    key: "8",
+    swatches: ["#191724", "#ebbcba", "#c4a7e7", "#9ccfd8"],
+    promptFg: "#ebbcba",
+    statusFg: "#9ccfd8",
+    bg: "#14121e",
+    surface: "#191724",
+  },
+  {
+    id: "monokai-pro",
+    name: "Monokai Pro",
+    desc: "Volcanic matte charcoal with sublime yellow, coral magenta, and mint green",
+    key: "9",
+    swatches: ["#221f22", "#ffd866", "#ff6188", "#a9dc76"],
+    promptFg: "#ffd866",
+    statusFg: "#a9dc76",
+    bg: "#19181a",
+    surface: "#221f22",
+  },
+  {
+    id: "one-dark-pro",
+    name: "One Dark Pro",
+    desc: "Clean neutral graphite slate with iconic chalk blue, purple, and sage green",
+    key: "0",
+    swatches: ["#282c34", "#61afef", "#c678dd", "#98c379"],
+    promptFg: "#61afef",
+    statusFg: "#98c379",
+    bg: "#1e222a",
+    surface: "#282c34",
+  },
+];
+---
+
+<section id="themes" class="py-20 border-b border-tide-border bg-tide-surface/30 relative scroll-mt-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
+      05 / THEMES
+    </div>
+    <div class="max-w-3xl mb-12">
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono mb-3">
+        Easy on the eyes.<br />
+        Ten built-in color themes.
+      </h2>
+      <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans">
+        Designed for long coding sessions. Click any theme card below or press keys <kbd class="px-1.5 py-0.5 bg-tide-variant border border-tide-border rounded text-tide-accent font-mono font-bold">1</kbd> through <kbd class="px-1.5 py-0.5 bg-tide-variant border border-tide-border rounded text-tide-accent font-mono font-bold">9</kbd> and <kbd class="px-1.5 py-0.5 bg-tide-variant border border-tide-border rounded text-tide-accent font-mono font-bold">0</kbd> on your keyboard to test them live across this entire website.
+      </p>
+    </div>
+
+    <!-- Theme Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
+      {themes.map((t) => (
+        <button
+          data-theme-target={t.id}
+          class="theme-select-card text-left p-5 rounded-lg border border-tide-border hover:border-tide-border-active bg-tide-surface transition-all duration-300 group flex flex-col justify-between shadow-lg relative overflow-hidden"
+        >
+          <div>
+            <!-- Header with Keycap -->
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-tide-border">
+              <span class="font-bold text-sm text-tide-text group-hover:text-tide-accent transition-colors flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shadow-sm" style={`background-color: ${t.swatches[1]}`}></span>
+                {t.name}
+              </span>
+              <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-muted text-[10px] group-hover:text-tide-accent font-bold">
+                Key [{t.key}]
+              </kbd>
+            </div>
+
+            <p class="text-xs text-tide-text-secondary mb-4 leading-relaxed font-sans">
+              {t.desc}
+            </p>
+
+            <!-- Mini Terminal Preview Card -->
+            <div
+              class="p-2.5 rounded border border-white/10 mb-4 text-[10px] space-y-1 shadow-inner select-none"
+              style={`background-color: ${t.bg}; color: ${t.promptFg};`}
+            >
+              <div class="flex items-center justify-between text-[9px] opacity-70 border-b border-white/10 pb-1 mb-1">
+                <div class="flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500/80"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-yellow-500/80"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500/80"></span>
+                </div>
+                <span>tide::theme</span>
+              </div>
+              <div class="truncate">
+                <span style={`color: ${t.statusFg};`}>tide&gt;</span>
+                <span class="text-white/80"> cargo test</span>
+              </div>
+              <div class="text-[9px] flex items-center justify-between" style={`color: ${t.statusFg};`}>
+                <span>● test_job_cleanup ... ok</span>
+                <span class="opacity-75">18ms</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Color Swatches -->
+          <div class="pt-3 border-t border-tide-border flex items-center justify-between">
+            <span class="text-[10px] text-tide-muted font-mono">Swatches:</span>
+            <div class="flex items-center gap-1.5">
+              {t.swatches.map((color) => (
+                <span
+                  class="w-5 h-5 rounded border border-white/15 shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                  style={`background-color: ${color};`}
+                  title={`Click to copy: ${color}`}
+                  data-hex={color}
+                ></span>
+              ))}
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+
+    <!-- Active Theme Toast Notification -->
+    <div id="theme-toast" class="hidden fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded bg-tide-surface border border-tide-border-active shadow-2xl text-xs font-mono text-tide-text flex items-center gap-2 animate-bounce">
+      <span class="text-tide-success">✓</span>
+      <span id="theme-toast-msg">Theme updated</span>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Client-side theme switching logic
+  const themeCards = document.querySelectorAll('.theme-select-card');
+  const toast = document.getElementById('theme-toast');
+  const toastMsg = document.getElementById('theme-toast-msg');
+
+  const themeList = [
+    { id: 'tide-ocean', name: 'TIDE Ocean' },
+    { id: 'tokyo-night', name: 'Tokyo Night' },
+    { id: 'catppuccin-mocha', name: 'Catppuccin' },
+    { id: 'nord', name: 'Nord Arctic' },
+    { id: 'gruvbox-dark', name: 'Gruvbox Dark' },
+    { id: 'cyberpunk', name: 'Cyberpunk Neon' },
+    { id: 'dracula', name: 'Dracula' },
+    { id: 'rose-pine', name: 'Rosé Pine' },
+    { id: 'monokai-pro', name: 'Monokai Pro' },
+    { id: 'one-dark-pro', name: 'One Dark Pro' },
+  ];
+
+  function showToast(text: string) {
+    if (toast && toastMsg) {
+      toastMsg.textContent = text;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2000);
+    }
+  }
+
+  function applyTheme(themeId: string, announce = false) {
+    document.documentElement.setAttribute('data-theme', themeId);
+    localStorage.setItem('tide-theme', themeId);
+
+    // Update active border highlight on cards
+    themeCards.forEach((card) => {
+      const target = card.getAttribute('data-theme-target');
+      if (target === themeId) {
+        card.classList.add('border-tide-border-active', 'ring-2', 'ring-tide-accent', 'shadow-[0_0_20px_var(--glow-color)]');
+      } else {
+        card.classList.remove('border-tide-border-active', 'ring-2', 'ring-tide-accent', 'shadow-[0_0_20px_var(--glow-color)]');
+      }
+    });
+
+    const found = themeList.find(t => t.id === themeId);
+    if (found && announce) {
+      showToast(`Theme switched to: ${found.name}`);
+    }
+  }
+
+  // Card click listener
+  themeCards.forEach((card) => {
+    card.addEventListener('click', (e) => {
+      // Check if user clicked a swatch to copy hex
+      const targetElem = e.target as HTMLElement;
+      const hex = targetElem.getAttribute('data-hex');
+      if (hex) {
+        e.stopPropagation();
+        navigator.clipboard.writeText(hex);
+        showToast(`Copied color ${hex} to clipboard!`);
+        return;
+      }
+
+      const themeId = card.getAttribute('data-theme-target');
+      if (themeId) applyTheme(themeId, true);
+    });
+  });
+
+  // Keyboard shortcut listener (Keys 1-9 and 0)
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.key >= '1' && e.key <= '9') {
+      const index = parseInt(e.key) - 1;
+      if (index < themeList.length) {
+        applyTheme(themeList[index].id, true);
+      }
+    } else if (e.key === '0' && themeList.length >= 10) {
+      applyTheme(themeList[9].id, true);
+    }
+  });
+
+  // Restore saved theme on load
+  const saved = localStorage.getItem('tide-theme') || 'tide-ocean';
+  applyTheme(saved, false);
+</script>

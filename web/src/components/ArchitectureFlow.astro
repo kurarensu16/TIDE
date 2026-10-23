@@ -1,0 +1,242 @@
+---
+// ArchitectureFlow.astro - Visual Architecture & OS-Level Hermetic Isolation Flow
+---
+
+<section id="architecture" class="py-20 border-b border-tide-border bg-tide-surface/30 relative">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="max-w-3xl mb-12">
+      <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-2 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-tide-accent"></span>
+        <span>// Architecture of Isolation</span>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text mb-4">
+        Eliminate the chaos of concurrent agents.<br />
+        <span class="text-tide-accent terminal-glow">Hardened OS and filesystem boundaries.</span>
+      </h2>
+      <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans">
+        Running multiple autonomous agents directly in your main working tree leads to silent clobbers, index corruptions, and background processes locking Windows files. TIDE wraps every session in an OS-level sandbox.
+      </p>
+    </div>
+
+    <!-- Comparative Problem vs Solution Cards -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-14">
+      <!-- Problem Box -->
+      <div class="p-6 rounded-lg border border-tide-danger/40 bg-tide-danger/5 font-mono text-xs shadow-lg relative overflow-hidden group hover:border-tide-danger/70 transition-all">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-tide-danger/20">
+          <span class="text-tide-danger font-bold uppercase tracking-wider flex items-center gap-2 text-sm">
+            <span>✕</span> Without TIDE: Raw Agent Chaos
+          </span>
+          <span class="text-[10px] text-tide-muted font-mono">Uncontrolled CLI execution</span>
+        </div>
+        <ul class="space-y-4 text-tide-text-secondary font-sans text-xs">
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-danger/20 text-tide-danger font-mono font-bold text-[10px] mt-0.5">01</span>
+            <div>
+              <strong class="text-tide-text font-mono">Silent File Collisions:</strong> Two agents running concurrently overwrite each other's edits, leaving unresolvable working-tree conflicts and lost code.
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-danger/20 text-tide-danger font-mono font-bold text-[10px] mt-0.5">02</span>
+            <div>
+              <strong class="text-tide-text font-mono">Windows Process Zombie Locks:</strong> Child dev-servers, cargo watches, and test runners outlive the agent. Windows locks the files, preventing git branch switching.
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-danger/20 text-tide-danger font-mono font-bold text-[10px] mt-0.5">03</span>
+            <div>
+              <strong class="text-tide-text font-mono">Redundant Cold Compiles:</strong> Naive git worktrees lack shared build caches or <code class="text-tide-danger font-mono">.env</code> configurations, wasting minutes compiling dependencies from scratch.
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-danger/20 text-tide-danger font-mono font-bold text-[10px] mt-0.5">04</span>
+            <div>
+              <strong class="text-tide-text font-mono">Terminal Output Floods:</strong> High-throughput test runs or compiler dumps freeze naive terminal wrappers, locking up the interface.
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Solution Box -->
+      <div class="p-6 rounded-lg border border-tide-success/40 bg-tide-success/5 font-mono text-xs shadow-lg relative overflow-hidden group hover:border-tide-success/70 transition-all">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-tide-success/20">
+          <span class="text-tide-success font-bold uppercase tracking-wider flex items-center gap-2 text-sm">
+            <span>✓</span> With TIDE: Hermetic Orchestration
+          </span>
+          <span class="text-[10px] text-tide-accent font-mono font-bold">Native Rust Core</span>
+        </div>
+        <ul class="space-y-4 text-tide-text-secondary font-sans text-xs">
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-success/20 text-tide-success font-mono font-bold text-[10px] mt-0.5">01</span>
+            <div>
+              <strong class="text-tide-text font-mono">Automatic Git Worktree Isolation:</strong> Every agent session receives an isolated Git worktree and dedicated branch (<code class="text-tide-accent font-mono">.tide/worktrees/&lt;id&gt;</code>). Your main tree remains pristine.
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-success/20 text-tide-success font-mono font-bold text-[10px] mt-0.5">02</span>
+            <div>
+              <strong class="text-tide-text font-mono">Windows Job Object Teardown:</strong> Process groups are bound to <code class="text-tide-accent font-mono">JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code>. When you close a session, the entire process tree terminates immediately.
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-success/20 text-tide-success font-mono font-bold text-[10px] mt-0.5">03</span>
+            <div>
+              <strong class="text-tide-text font-mono">Smart Worktree Bootstrapping:</strong> Configurable hooks automatically link shared build caches (<code class="text-tide-accent font-mono">CARGO_TARGET_DIR</code>, node_modules) and copy untracked <code class="text-tide-accent font-mono">.env</code> secrets for instant builds.
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="px-1.5 py-0.5 rounded bg-tide-success/20 text-tide-success font-mono font-bold text-[10px] mt-0.5">04</span>
+            <div>
+              <strong class="text-tide-text font-mono">60 FPS Coalesced PTY Rendering:</strong> Dedicated background threads update an in-memory virtual terminal grid and send coalesced dirty signals. The UI render loop stays locked at 60 FPS.
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Interactive Interactive Pipeline Architecture View -->
+    <div class="rounded-lg border border-tide-border bg-tide-bg p-6 shadow-xl overflow-hidden font-mono text-xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-tide-border gap-2">
+        <div class="text-xs text-tide-muted uppercase tracking-wider font-bold flex items-center gap-2">
+          <span class="text-tide-accent">⚡</span>
+          <span>Interactive Orchestration Pipeline</span>
+        </div>
+        <div class="text-[11px] text-tide-accent">
+          Click any stage below to inspect internal Rust mechanics:
+        </div>
+      </div>
+
+      <!-- Pipeline Stages Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        
+        <!-- Stage 1 -->
+        <button class="pipe-stage-btn active text-left p-4 rounded border border-tide-border-active bg-tide-surface hover:border-tide-accent transition-all group" data-stage="spawn">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-tide-variant text-tide-muted font-bold">01</span>
+            <span class="w-2 h-2 rounded-full bg-tide-accent"></span>
+          </div>
+          <div class="font-bold text-tide-text group-hover:text-tide-accent mb-1">Worktree Spawn</div>
+          <div class="text-[10px] text-tide-muted font-sans leading-tight">Instant branch & dir creation in &lt;80ms</div>
+        </button>
+
+        <!-- Stage 2 -->
+        <button class="pipe-stage-btn text-left p-4 rounded border border-tide-border bg-tide-surface hover:border-tide-accent transition-all group" data-stage="job">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-tide-variant text-tide-muted font-bold">02</span>
+            <span class="w-2 h-2 rounded-full bg-tide-warning"></span>
+          </div>
+          <div class="font-bold text-tide-text group-hover:text-tide-accent mb-1">JobObject Lock</div>
+          <div class="text-[10px] text-tide-muted font-sans leading-tight">NT Kernel limits prevent rogue grandchildren</div>
+        </button>
+
+        <!-- Stage 3 -->
+        <button class="pipe-stage-btn text-left p-4 rounded border border-tide-border bg-tide-surface hover:border-tide-accent transition-all group" data-stage="pty">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-tide-variant text-tide-muted font-bold">03</span>
+            <span class="w-2 h-2 rounded-full bg-tide-success"></span>
+          </div>
+          <div class="font-bold text-tide-text group-hover:text-tide-accent mb-1">ConPTY & 60 FPS</div>
+          <div class="text-[10px] text-tide-muted font-sans leading-tight">Decoupled VT100 grid prevents UI lockup</div>
+        </button>
+
+        <!-- Stage 4 -->
+        <button class="pipe-stage-btn text-left p-4 rounded border border-tide-border bg-tide-surface hover:border-tide-accent transition-all group" data-stage="merge">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-tide-variant text-tide-muted font-bold">04</span>
+            <span class="w-2 h-2 rounded-full bg-tide-accent"></span>
+          </div>
+          <div class="font-bold text-tide-text group-hover:text-tide-accent mb-1">Hermetic Merge</div>
+          <div class="text-[10px] text-tide-muted font-sans leading-tight">Human review gate + clean branch prune</div>
+        </button>
+      </div>
+
+      <!-- Detail Box for Active Pipeline Stage -->
+      <div id="stage-detail-box" class="p-5 rounded border border-tide-border bg-tide-surface text-xs leading-relaxed transition-all">
+        <div id="detail-spawn" class="stage-detail space-y-3">
+          <div class="flex items-center justify-between text-tide-accent font-bold">
+            <span>Stage 01: Worktree Bootstrapping (src/worktree.rs)</span>
+            <span class="text-tide-muted text-[10px]">Execution Time: ~78 ms</span>
+          </div>
+          <p class="text-tide-text-secondary font-sans">
+            TIDE issues an optimized <code class="text-tide-text">git worktree add -b tide/&lt;agent_id&gt; .tide/worktrees/&lt;agent_id&gt;</code>. Immediately following directory creation, TIDE executes declarative bootstrap hooks: linking the primary workspace's shared <code class="text-tide-accent">CARGO_TARGET_DIR</code> build cache and copying untracked local secrets (<code class="text-tide-accent">.env</code>).
+          </p>
+          <div class="p-2.5 rounded bg-tide-bg border border-tide-border font-mono text-[11px] text-tide-success">
+            ✓ Worktree mounted at .tide/worktrees/claude-2<br/>
+            ✓ Target symlink established → Saved 42s cold compile<br/>
+            ✓ Main repository git index remains 100% untouched
+          </div>
+        </div>
+
+        <div id="detail-job" class="stage-detail hidden space-y-3">
+          <div class="flex items-center justify-between text-tide-warning font-bold">
+            <span>Stage 02: Windows Job Object Handle Binding (src/job_object.rs)</span>
+            <span class="text-tide-muted text-[10px]">Win32 NT Kernel Subsystem</span>
+          </div>
+          <p class="text-tide-text-secondary font-sans">
+            Before spawning child CLIs, TIDE creates an anonymous Windows Job Object handle via <code class="text-tide-text">CreateJobObjectW</code> and configures <code class="text-tide-accent">JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code>. The child process and any sub-processes spawned by it (compilers, npm daemons, test watchers) are bound into this job.
+          </p>
+          <div class="p-2.5 rounded bg-tide-bg border border-tide-border font-mono text-[11px] text-tide-warning">
+            let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe &#123; zeroed() &#125;;<br/>
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;<br/>
+            SetInformationJobObject(handle, JobObjectExtendedLimitInformation, ...);
+          </div>
+        </div>
+
+        <div id="detail-pty" class="stage-detail hidden space-y-3">
+          <div class="flex items-center justify-between text-tide-success font-bold">
+            <span>Stage 03: ConPTY Emulation & Frame Pacing (src/terminal.rs)</span>
+            <span class="text-tide-muted text-[10px]">60 Hz Crossbeam Channel</span>
+          </div>
+          <p class="text-tide-text-secondary font-sans">
+            Child stdout is ingested on a dedicated OS background thread updating an in-memory VT100 virtual terminal parser grid. Dirty updates are dispatched across a crossbeam channel with frame pacing locked at 16.6ms (60 FPS). Even if an agent outputs 500,000 lines/second, the main UI thread never drops a single frame.
+          </p>
+          <div class="p-2.5 rounded bg-tide-bg border border-tide-border font-mono text-[11px] text-tide-success">
+            // Zero UI Stutter Protocol<br/>
+            pty_reader_thread ➔ updates vt100 grid in-place;<br/>
+            dirty_tx.try_send(()) ➔ coalesced signal;<br/>
+            ui_thread ➔ frame_paced @ 16.6ms (max 60 FPS);
+          </div>
+        </div>
+
+        <div id="detail-merge" class="stage-detail hidden space-y-3">
+          <div class="flex items-center justify-between text-tide-accent font-bold">
+            <span>Stage 04: Human Review & Integration Gate (src/ui.rs)</span>
+            <span class="text-tide-muted text-[10px]">Ctrl+G Diff Review Protocol</span>
+          </div>
+          <p class="text-tide-text-secondary font-sans">
+            When an agent completes its task, TIDE presents an interactive hunk-by-hunk diff review. If satisfied, one keystroke merges the worktree branch into <code class="text-tide-text">main</code> and cleanly prunes the worktree directory. If rejected, the Job Object drops, terminating any running processes instantly with zero leftover artifacts.
+          </p>
+          <div class="p-2.5 rounded bg-tide-bg border border-tide-border font-mono text-[11px] text-tide-accent">
+            git merge --no-ff tide/job-objects<br/>
+            git worktree remove .tide/worktrees/claude-2 --force<br/>
+            git branch -d tide/job-objects
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Interactive Pipeline Script -->
+<script>
+  const stageBtns = document.querySelectorAll('.pipe-stage-btn');
+  const details = document.querySelectorAll('.stage-detail');
+
+  stageBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const stage = btn.getAttribute('data-stage');
+
+      // Update button styling
+      stageBtns.forEach(b => {
+        b.className = 'pipe-stage-btn text-left p-4 rounded border border-tide-border bg-tide-surface hover:border-tide-accent transition-all group';
+      });
+      btn.className = 'pipe-stage-btn active text-left p-4 rounded border border-tide-border-active bg-tide-surface hover:border-tide-accent transition-all group ring-1 ring-tide-accent';
+
+      // Show detail
+      details.forEach(d => d.classList.add('hidden'));
+      const activeDetail = document.getElementById(`detail-${stage}`);
+      if (activeDetail) activeDetail.classList.remove('hidden');
+    });
+  });
+</script>

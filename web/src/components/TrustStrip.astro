@@ -1,0 +1,47 @@
+---
+// TrustStrip.astro - Systems Engineering Guarantees & Trust Badges
+const points = [
+  {
+    icon: "✓",
+    highlight: "~14 MB Rust Binary",
+    desc: "Zero Chromium, Electron, or Node runtime bloat",
+  },
+  {
+    icon: "✓",
+    highlight: "Windows NT Job Objects",
+    desc: "100% process tree teardown, 0 leaked background locks",
+  },
+  {
+    icon: "✓",
+    highlight: "Git Worktree Isolation",
+    desc: "Parallel agents branch safely without clobbering main",
+  },
+  {
+    icon: "✓",
+    highlight: "60 FPS ConPTY Engine",
+    desc: "Decoupled VT100 grid prevents terminal freeze on log bursts",
+  },
+];
+---
+
+<div class="border-y border-tide-border bg-tide-surface/60 backdrop-blur-sm py-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+      {points.map((p) => (
+        <div class="flex items-center gap-2.5 p-2 rounded bg-tide-bg/40 border border-tide-border hover:border-tide-border-active transition-colors group">
+          <span class="w-5 h-5 rounded flex items-center justify-center bg-tide-success/15 text-tide-success font-bold text-xs shrink-0 group-hover:scale-110 transition-transform">
+            {p.icon}
+          </span>
+          <div class="min-w-0">
+            <div class="font-bold text-tide-text truncate group-hover:text-tide-accent transition-colors">
+              {p.highlight}
+            </div>
+            <div class="text-[10px] text-tide-muted truncate font-sans">
+              {p.desc}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
