@@ -15,7 +15,12 @@ pub struct WorktreeInfo {
 
 impl WorktreeInfo {
     /// Creates a new isolated Git worktree and branch for an agent session.
-    pub fn create(repo_root: &Path, session_id: &str, base_branch: &str) -> anyhow::Result<Self> {
+    pub fn create(
+        repo_root: &Path,
+        session_id: &str,
+        base_branch: &str,
+        bootstrap_cfg: Option<&crate::config::WorktreeBootstrapConfig>,
+    ) -> anyhow::Result<Self> {
         let worktree_dir = repo_root.join(".tide").join("worktrees").join(session_id);
         let branch = format!("tide/{}", session_id);
 
@@ -59,31 +64,59 @@ impl WorktreeInfo {
             base_branch: base_branch.to_string(),
         };
 
-        // Run bootstrap hooks (e.g. copy .env, share target dir)
-        info.bootstrap(repo_root)?;
+        // Run bootstrap hooks (e.g. copy .env, share target dir, link node_modules)
+        info.bootstrap(repo_root, bootstrap_cfg)?;
 
         Ok(info)
     }
 
     /// Bootstraps the isolated worktree with untracked configs and shared build caches.
-    fn bootstrap(&self, repo_root: &Path) -> anyhow::Result<()> {
-        // Copy .env if present in root
-        let root_env = repo_root.join(".env");
-        if root_env.exists() {
-            let target_env = self.path.join(".env");
-            let _ = fs::copy(&root_env, &target_env);
+    fn bootstrap(&self, repo_root: &Path, cfg: Option<&crate::config::WorktreeBootstrapConfig>) -> anyhow::Result<()> {
+        let default_cfg = crate::config::WorktreeBootstrapConfig::default();
+        let b_cfg = cfg.unwrap_or(&default_cfg);
+
+        // 1. Copy configured untracked files (.env, .env.local, etc.)
+        for file_name in &b_cfg.copy_files {
+            let src = repo_root.join(file_name);
+            if src.is_file() {
+                let dst = self.path.join(file_name);
+                if let Some(parent) = dst.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                let _ = fs::copy(&src, &dst);
+            }
         }
 
-        // Create .cargo/config.toml with shared target-dir to avoid re-compiling all crates
-        let root_cargo = repo_root.join("Cargo.toml");
-        if root_cargo.exists() {
-            let cargo_dir = self.path.join(".cargo");
-            fs::create_dir_all(&cargo_dir)?;
-            let config_content = format!(
-                "[build]\ntarget-dir = \"{}\"\n",
-                repo_root.join("target").to_string_lossy().replace('\\', "/")
-            );
-            fs::write(cargo_dir.join("config.toml"), config_content)?;
+        // 2. Share Cargo target directory if enabled
+        if b_cfg.share_cargo_target {
+            let root_cargo = repo_root.join("Cargo.toml");
+            if root_cargo.exists() {
+                let cargo_dir = self.path.join(".cargo");
+                let _ = fs::create_dir_all(&cargo_dir);
+                let config_content = format!(
+                    "[build]\ntarget-dir = \"{}\"\n",
+                    repo_root.join("target").to_string_lossy().replace('\\', "/")
+                );
+                let _ = fs::write(cargo_dir.join("config.toml"), config_content);
+            }
+        }
+
+        // 3. Link node_modules if enabled
+        if b_cfg.link_node_modules {
+            let root_nm = repo_root.join("node_modules");
+            let target_nm = self.path.join("node_modules");
+            if root_nm.is_dir() && !target_nm.exists() {
+                #[cfg(windows)]
+                {
+                    let _ = Command::new("cmd")
+                        .args(["/c", "mklink", "/J", &target_nm.to_string_lossy(), &root_nm.to_string_lossy()])
+                        .output();
+                }
+                #[cfg(unix)]
+                {
+                    let _ = std::os::unix::fs::symlink(&root_nm, &target_nm);
+                }
+            }
         }
 
         Ok(())

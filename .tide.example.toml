@@ -1,0 +1,37 @@
+# TIDE Configuration Example
+# Place this file as `.tide.toml` in your project root,
+# or as `~/.config/tide/tide.toml` (Linux/macOS) / `%APPDATA%\tide\config.toml` (Windows).
+
+[workspace]
+# Default color palette:
+# TideOcean, TokyoNight, CatppuccinMocha, Nord, GruvboxDark, Cyberpunk, Dracula, RosePine, MonokaiPro, OneDarkPro
+theme = "TideOcean"
+
+# Preferred default shell command (e.g. "powershell.exe", "pwsh", "bash", "zsh", "nu"):
+# default_shell = "bash"
+
+# Initial terminal scaling / font zoom offset (-5 to +5):
+# font_zoom = 0
+
+[worktree.bootstrap]
+# Untracked files to automatically copy from root workspace into newly created agent worktrees:
+copy_files = [".env", ".env.local"]
+
+# Share root `target/` directory for Rust projects to avoid cold rebuilds:
+share_cargo_target = true
+
+# Create directory junction / symlink for `node_modules` in JS/TS projects:
+link_node_modules = true
+
+# Custom Coding Agents
+[[agents]]
+name = "Antigravity"
+command = "agy"
+args = []
+description = "Autonomous coding agent"
+
+[[agents]]
+name = "Claude Code"
+command = "claude"
+args = []
+description = "Anthropic CLI agent"

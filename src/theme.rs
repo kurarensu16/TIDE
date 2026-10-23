@@ -339,4 +339,21 @@ impl ColorTheme {
             },
         }
     }
+
+    pub fn from_str_loose(s: &str) -> Option<Self> {
+        let clean = s.to_lowercase().replace(['-', '_', ' '], "");
+        match clean.as_str() {
+            "tideocean" | "ocean" | "tide" => Some(ColorTheme::TideOcean),
+            "tokyonight" | "tokyo" => Some(ColorTheme::TokyoNight),
+            "catppuccinmocha" | "catppuccin" | "mocha" => Some(ColorTheme::CatppuccinMocha),
+            "nord" | "nordarctic" => Some(ColorTheme::Nord),
+            "gruvboxdark" | "gruvbox" => Some(ColorTheme::GruvboxDark),
+            "cyberpunk" | "cyberpunkneon" => Some(ColorTheme::Cyberpunk),
+            "dracula" => Some(ColorTheme::Dracula),
+            "rosepine" | "rose" => Some(ColorTheme::RosePine),
+            "monokaipro" | "monokai" => Some(ColorTheme::MonokaiPro),
+            "onedarkpro" | "onedark" => Some(ColorTheme::OneDarkPro),
+            _ => None,
+        }
+    }
 }

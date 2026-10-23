@@ -4,6 +4,7 @@
 
 mod agents;
 mod app;
+mod config;
 mod explorer;
 mod git;
 mod icons;

@@ -250,6 +250,7 @@ pub struct App {
     pub welcome_filter_query: String,
     pub welcome_prompt_modal: WelcomePromptModal,
     pub welcome_area: ratatui::layout::Rect,
+    pub config: crate::config::TideConfig,
 }
 
 impl App {
@@ -258,6 +259,13 @@ impl App {
         let (bg_notify_tx, bg_notify_rx) = unbounded();
 
         let is_home = Self::is_home_or_root_dir(&workspace_dir);
+        let config = crate::config::TideConfig::load(&workspace_dir);
+        let mut initial_theme = crate::theme::ColorTheme::TideOcean;
+        if let Some(t) = crate::theme::ColorTheme::from_str_loose(&config.workspace.theme) {
+            initial_theme = t;
+        }
+        let initial_zoom = config.workspace.font_zoom.unwrap_or(0);
+
         let recent_workspaces = Self::load_recent_workspaces();
         let detected_workspaces = if is_home {
             Self::scan_workspaces(&workspace_dir)
@@ -371,12 +379,13 @@ impl App {
             agents_scroll: 0,
             terminal_tab_scroll: 0,
             icon_theme: crate::icons::IconTheme::NerdFont,
-            color_theme: crate::theme::ColorTheme::TideOcean,
+            color_theme: initial_theme,
             show_theme_modal: false,
             theme_modal_selected_idx: 0,
             theme_modal_area: ratatui::layout::Rect::default(),
-            previous_color_theme: crate::theme::ColorTheme::TideOcean,
-            terminal_zoom_level: 0,
+            previous_color_theme: initial_theme,
+            terminal_zoom_level: initial_zoom,
+            config,
             show_welcome_screen: is_home,
             detected_workspaces,
             recent_workspaces,
@@ -392,13 +401,17 @@ impl App {
 
         app.update_file_preview();
 
-        // Spawn initial shell session (PowerShell on Windows, Bash on Linux/macOS)
-        #[cfg(windows)]
-        let (shell_title, shell_cmd) = ("PowerShell", "powershell.exe");
-        #[cfg(not(windows))]
-        let (shell_title, shell_cmd) = ("Bash", "bash");
+        // Spawn initial shell session (Configured custom shell or platform default)
+        let (shell_title, shell_cmd) = if let Some(ref custom) = app.config.workspace.default_shell {
+            (custom.clone(), custom.clone())
+        } else {
+            #[cfg(windows)]
+            { ("PowerShell".to_string(), "powershell.exe".to_string()) }
+            #[cfg(not(windows))]
+            { ("Bash".to_string(), "bash".to_string()) }
+        };
 
-        app.spawn_terminal(shell_title, shell_cmd, &[])?;
+        app.spawn_terminal(&shell_title, &shell_cmd, &[])?;
 
         Ok(app)
     }
@@ -1855,7 +1868,7 @@ impl App {
         let base_branch = if self.git_info.branch.is_empty() { "main" } else { &self.git_info.branch };
 
         // 1. Create Git Worktree
-        let wt = match WorktreeInfo::create(&self.workspace_dir, &session_id, base_branch) {
+        let wt = match WorktreeInfo::create(&self.workspace_dir, &session_id, base_branch, Some(&self.config.worktree.bootstrap)) {
             Ok(w) => w,
             Err(e) => {
                 let err_str = format!("Failed to create worktree: {}", e);
