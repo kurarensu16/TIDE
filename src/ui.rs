@@ -2433,11 +2433,19 @@ fn draw_terminal_menu_modal(f: &mut Frame, app: &mut App, area: Rect) {
     let bash_ic = crate::icons::shell_icon("bash", app.icon_theme);
     let wsl_ic = crate::icons::shell_icon("wsl", app.icon_theme);
 
+    #[cfg(windows)]
     let options = [
         ("1", format!("{}Command Prompt (cmd.exe)", cmd_ic), "Native Windows Command Line shell", "[ Windows CMD ]", theme.accent),
         ("2", format!("{}PowerShell (powershell.exe)", ps_ic), "Windows PowerShell scripting shell", "[ PowerShell ]", Color::Rgb(59, 130, 246)),
         ("3", format!("{}Git Bash (bash.exe)", bash_ic), "Git Unix Bash shell environment", "[ Git Bash ]", Color::Rgb(249, 115, 22)),
         ("4", format!("{}WSL / Linux (wsl.exe)", wsl_ic), "Windows Subsystem for Linux session", "[ WSL Linux ]", theme.success),
+    ];
+    #[cfg(not(windows))]
+    let options = [
+        ("1", format!("{}Bourne Again Shell (bash)", bash_ic), "Standard Linux/Unix Bash shell", "[ Bash ]", theme.accent),
+        ("2", format!("{}POSIX Shell (sh)", bash_ic), "Lightweight POSIX system shell", "[ Sh ]", Color::Rgb(59, 130, 246)),
+        ("3", format!("{}Z Shell (zsh)", bash_ic), "Z Shell interactive command environment", "[ Zsh ]", Color::Rgb(249, 115, 22)),
+        ("4", format!("{}Bash Login (bash --login)", bash_ic), "Login shell with profile exports", "[ Login Shell ]", theme.success),
     ];
 
     let mut option_lines = Vec::new();

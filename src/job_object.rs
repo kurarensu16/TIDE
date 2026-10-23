@@ -18,6 +18,9 @@ use std::mem::size_of;
 #[cfg(windows)]
 use std::os::windows::io::RawHandle;
 
+#[cfg(not(windows))]
+pub type RawHandle = usize;
+
 pub struct JobObject {
     #[cfg(windows)]
     handle: HANDLE,

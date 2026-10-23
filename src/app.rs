@@ -392,13 +392,13 @@ impl App {
 
         app.update_file_preview();
 
-        // Spawn initial shell session (PowerShell on Windows, fallback to cmd)
+        // Spawn initial shell session (PowerShell on Windows, Bash on Linux/macOS)
         #[cfg(windows)]
-        let shell_cmd = "powershell.exe";
+        let (shell_title, shell_cmd) = ("PowerShell", "powershell.exe");
         #[cfg(not(windows))]
-        let shell_cmd = "bash";
+        let (shell_title, shell_cmd) = ("Bash", "bash");
 
-        app.spawn_terminal("PowerShell", shell_cmd, &[])?;
+        app.spawn_terminal(shell_title, shell_cmd, &[])?;
 
         Ok(app)
     }
@@ -1809,12 +1809,20 @@ impl App {
     }
 
     pub fn spawn_selected_terminal(&mut self, idx: usize) -> anyhow::Result<()> {
+        #[cfg(windows)]
         let res = match idx {
             0 => self.spawn_terminal("cmd.exe", "cmd.exe", &[]),
             1 => self.spawn_terminal("PowerShell", "powershell.exe", &[]),
             2 => self.spawn_terminal("Git Bash", "bash.exe", &[]),
             3 => self.spawn_terminal("WSL", "wsl.exe", &[]),
             _ => self.spawn_terminal("PowerShell", "powershell.exe", &[]),
+        };
+        #[cfg(not(windows))]
+        let res = match idx {
+            0 => self.spawn_terminal("Bash", "bash", &[]),
+            1 => self.spawn_terminal("Sh", "sh", &[]),
+            2 => self.spawn_terminal("Zsh", "zsh", &[]),
+            _ => self.spawn_terminal("Bash", "bash", &[]),
         };
         self.active_pane = ActivePane::Terminal;
         res
@@ -2562,7 +2570,10 @@ impl App {
                         match self.agent_launch_selected_idx {
                             0 => { let _ = self.launch_agent("Antigravity", "agy", &[], "Interactive Coding Agent"); }
                             1 => { let _ = self.launch_agent("Claude Code", "claude", &[], "Autonomous Agent Session"); }
-                            2 => { let _ = self.launch_agent("Worktree Shell", "powershell.exe", &[], "Isolated Worktree Shell"); }
+                            2 => {
+                                let shell = if cfg!(windows) { "powershell.exe" } else { "bash" };
+                                let _ = self.launch_agent("Worktree Shell", shell, &[], "Isolated Worktree Shell");
+                            }
                             _ => {}
                         }
                     }
@@ -3554,7 +3565,8 @@ impl App {
                             let _ = self.launch_agent("Claude Code", "claude", &[], "Autonomous Agent Session");
                         }
                         2 => {
-                            let _ = self.launch_agent("Worktree Shell", "powershell.exe", &[], "Isolated Worktree Shell");
+                            let shell = if cfg!(windows) { "powershell.exe" } else { "bash" };
+                            let _ = self.launch_agent("Worktree Shell", shell, &[], "Isolated Worktree Shell");
                         }
                         _ => {}
                     }
