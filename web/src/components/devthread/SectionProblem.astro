@@ -1,11 +1,11 @@
 ---
-// SectionProblem.astro - 01 / THE PROBLEM (Plain-English Edition)
+// SectionProblem.astro - 01 / THE PROBLEM
 ---
 
 <section id="the-problem" class="py-20 border-b border-tide-border bg-tide-bg relative scroll-mt-14">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
-    <!-- DevThread-style section label -->
+    <!-- Section label -->
     <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
       01 / THE PROBLEM
     </div>
@@ -13,13 +13,13 @@
     <!-- 2-Column Split -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
       
-      <!-- Left Column: Big Headline & Narrative -->
+      <!-- Left Column: Headline & Technical Narrative -->
       <div class="lg:col-span-5 space-y-4">
         <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono">
-          Juggling terminals and agents is chaos.
+          Unorchestrated agents create silent state corruption.
         </h2>
         <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans">
-          Flipping between five terminal tabs, VS Code, and Git apps just to monitor AI coding agents is exhausting. Without an integrated terminal workspace, agents collide and clutter your system.
+          Running autonomous coding agents inside raw terminal tabs leads to concurrent Git index collisions, orphaned background processes, and frozen terminal event loops.
         </p>
       </div>
 
@@ -31,11 +31,11 @@
           <div class="flex items-baseline gap-3">
             <span class="text-xs font-mono font-bold text-tide-accent">01</span>
             <h3 class="text-base sm:text-lg font-bold text-tide-text font-mono">
-              Agents overwrite each other's work
+              Working tree race conditions & index deadlocks
             </h3>
           </div>
           <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed pl-7 font-sans">
-            If two agents edit files at the same time, one accidentally erases what the other just built. You get broken code, locked index files (<code class="text-tide-danger font-mono">.git/index.lock</code>), and messy Git conflicts that take hours to untangle.
+            When multiple agents modify the working tree concurrently, they overwrite uncommitted changes, deadlock on <code class="text-tide-danger font-mono">.git/index.lock</code>, and produce contaminated branches that require manual rebase surgery.
           </p>
         </div>
 
@@ -44,11 +44,11 @@
           <div class="flex items-baseline gap-3">
             <span class="text-xs font-mono font-bold text-tide-accent">02</span>
             <h3 class="text-base sm:text-lg font-bold text-tide-text font-mono">
-              Ghost servers keep running in the background
+              Orphaned NT process trees and port exhaustion
             </h3>
           </div>
           <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed pl-7 font-sans">
-            Agents frequently start background test runners, file watchers, and web servers. When you close the terminal, Windows doesn't always kill them—leaving invisible phantom processes that drain your RAM and block ports like <code class="text-tide-text font-mono">localhost:3000</code>.
+            Subprocesses spawned by agent tool calls—compilers, watchers, dev servers—frequently survive shell exits. Windows process hierarchies leak zombie processes that hold network ports like <code class="text-tide-text font-mono">localhost:3000</code> and drain host RAM.
           </p>
         </div>
 
@@ -57,11 +57,11 @@
           <div class="flex items-baseline gap-3">
             <span class="text-xs font-mono font-bold text-tide-accent">03</span>
             <h3 class="text-base sm:text-lg font-bold text-tide-text font-mono">
-              Endless build logs freeze your terminal
+              VT100 burst floods and UI thread starvation
             </h3>
           </div>
           <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed pl-7 font-sans">
-            When an agent runs a heavy test suite or compiler command, thousands of lines of output flood your terminal window, causing standard terminals to stutter, lag behind, and stop responding to your keystrokes.
+            Unbounded compiler diagnostics and high-throughput LLM streaming saturate stdout pipes. Without frame-paced PTY consumption, terminal emulators lock their rendering thread and drop user keyboard events.
           </p>
         </div>
 

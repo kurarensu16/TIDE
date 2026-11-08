@@ -1,5 +1,5 @@
 ---
-// index.astro - TIDE Official Website (DevThread Layout Reference)
+// index.astro - TIDE Official Website
 import '../styles/global.css';
 import Navbar from '../components/Navbar.astro';
 import PixelLogoHero from '../components/PixelLogoHero.astro';
@@ -40,45 +40,40 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       rel="stylesheet"
     />
   </head>
-  <body class="bg-tide-bg text-tide-text font-mono antialiased selection:bg-tide-accent/20 selection:text-tide-accent scanlines">
+  <body class="bg-tide-bg text-tide-text font-mono antialiased selection:bg-tide-accent/20 selection:text-tide-accent">
     <!-- Navbar -->
     <Navbar />
 
     <!-- Main Content -->
     <main>
-      <!-- Hero Section (DevThread Layout) -->
+      <!-- Hero Section -->
       <section id="hero" class="relative pt-12 pb-20 border-b border-tide-border terminal-grid overflow-hidden">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
           
-          <!-- Big Animated Pixelated Wave Logo on Top -->
+          <!-- Animated Pixelated Wave Logo on Top -->
           <div class="mb-8">
             <PixelLogoHero />
           </div>
 
-          <!-- Eyebrow (DevThread Style) -->
+          <!-- Eyebrow -->
           <div class="text-xs uppercase tracking-widest text-tide-accent font-mono flex items-center justify-center gap-2 mb-4">
             <span class="text-tide-muted select-none">—</span>
             <span>TERMINAL INTEGRATED DEVELOPMENT ENVIRONMENT (TIDE)</span>
             <span class="text-tide-muted select-none">—</span>
           </div>
 
-          <!-- Main Headline (DevThread Bold High-Impact Style) -->
+          <!-- Main Headline -->
           <h1 class="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-tide-text leading-[1.1] font-mono">
-            An IDE inside your terminal.<br />
-            <span class="text-tide-accent">Built for parallel AI agents.</span>
+            The native terminal workspace<br />
+            <span class="text-tide-accent">for parallel coding agents.</span>
           </h1>
 
-          <!-- Sub-headline -->
-          <div class="text-lg sm:text-xl font-semibold text-tide-text font-sans mt-5 max-w-2xl">
-            Stop switching between five terminal tabs, editors, and Git apps.
-          </div>
-
-          <!-- Description -->
-          <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans max-w-2xl mt-4">
-            TIDE integrates shell sessions, parallel coding agents, and side-by-side code diffs into one fast, keyboard-first terminal workspace. Each agent works in an isolated copy of your code so they never fight over files or break your main branch.
+          <!-- Technical Sub-headline -->
+          <p class="text-base sm:text-lg text-tide-text-secondary leading-relaxed font-sans max-w-2xl mt-6">
+            Run Claude Code, Antigravity, and Aider concurrently in dedicated Git worktrees with kernel-level process isolation, sub-25ms input latency, and integrated diff review.
           </p>
 
-          <!-- Action Row: Primary Button + Text Link -->
+          <!-- Action Row: Primary Button + Secondary Documentation Link -->
           <div class="flex flex-wrap items-center justify-center gap-4 mt-8 font-mono text-xs">
             <a
               href="#install"
@@ -89,15 +84,15 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
             </a>
 
             <a
-              href="#how-it-works"
+              href={`${base}/docs`}
               class="px-5 py-3 rounded border border-tide-border bg-tide-surface text-tide-text-secondary hover:text-tide-accent hover:border-tide-border-active transition-all flex items-center gap-1"
             >
-              <span>See how it works</span>
+              <span>Read Architecture & Docs</span>
               <span>&rarr;</span>
             </a>
           </div>
 
-          <!-- Quick Install Command Box (DevThread Style) -->
+          <!-- Quick Install Command Box -->
           <div class="mt-8 max-w-xl w-full">
             <div class="flex items-center justify-between p-2.5 rounded-lg bg-tide-surface border border-tide-border hover:border-tide-border-active transition-all group shadow-sm font-mono text-xs">
               <div class="flex items-center gap-2 truncate pl-1">
@@ -117,35 +112,37 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
             <!-- Footnote Info -->
             <div class="mt-3 text-[11px] text-tide-muted font-mono flex items-center justify-center gap-2 flex-wrap">
-              <span>Lightweight single binary</span>
+              <span>Single native binary</span>
               <span>&middot;</span>
-              <span>Starts in &lt;0.5s</span>
+              <span>&lt;0.5s cold boot</span>
               <span>&middot;</span>
-              <span>Uses ~14 MB RAM</span>
+              <span>~14 MB resident memory</span>
               <span>&middot;</span>
-              <span>Zero Electron bloat</span>
+              <span>Zero Electron</span>
             </div>
           </div>
 
         </div>
       </section>
 
-      <!-- DevThread-style metadata strip below Hero -->
+      <!-- Architecture metadata strip below Hero -->
       <section class="border-b border-tide-border bg-tide-surface/60 py-3 text-xs font-mono text-tide-muted">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div class="flex items-center gap-3">
-            <span>TERMINAL IDE</span>
+            <span class="text-tide-accent font-semibold">TIDE v0.1.0</span>
             <span class="hidden sm:inline">&middot;</span>
-            <span>OPEN SOURCE &middot; MIT</span>
+            <span>RUST 2024</span>
             <span class="hidden sm:inline">&middot;</span>
-            <span class="hidden sm:inline">NO GHOST PROCESSES</span>
+            <span class="hidden sm:inline">PARALLEL WORKTREES</span>
             <span class="hidden sm:inline">&middot;</span>
-            <span class="hidden sm:inline">SMOOTH 60 FPS</span>
+            <span class="hidden sm:inline">WIN32 JOB OBJECTS</span>
+            <span class="hidden sm:inline">&middot;</span>
+            <span class="hidden sm:inline">60 FPS CONPTY</span>
             <span class="hidden sm:inline">&middot;</span>
             <span class="hidden sm:inline">~14 MB RAM</span>
           </div>
           <a href="#how-it-works" class="text-tide-text-secondary hover:text-tide-accent transition-colors flex items-center gap-1">
-            <span>Explore how it works</span>
+            <span>Explore systems architecture</span>
             <span>&darr;</span>
           </a>
         </div>
@@ -169,7 +166,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <!-- 06 / COMPATIBILITY & SYSTEMS EVIDENCE -->
       <SectionCompatibility />
 
-      <!-- 07 / OPEN SOURCE & GETTING STARTED (Centered Callout) -->
+      <!-- 07 / OPEN SOURCE & GETTING STARTED -->
       <SectionOpenSource />
     </main>
 

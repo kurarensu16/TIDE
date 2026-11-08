@@ -1,12 +1,12 @@
 ---
-// SectionConcreteWorkspace.astro - 04 / LIVE PREVIEW (Plain-English Edition)
+// SectionConcreteWorkspace.astro - 04 / LIVE PREVIEW
 import TerminalMockup from '../TerminalMockup.astro';
 ---
 
 <section id="workspace" class="py-20 border-b border-tide-border bg-tide-surface/20 relative scroll-mt-14">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
-    <!-- DevThread-style section label -->
+    <!-- Section label -->
     <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
       04 / LIVE PREVIEW
     </div>
@@ -15,13 +15,13 @@ import TerminalMockup from '../TerminalMockup.astro';
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
       <div>
         <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono">
-          An integrated workspace.<br />
-          Keyboard-first & fast.
+          Integrated TUI workspace.<br />
+          Low latency & keyboard-first control.
         </h2>
       </div>
       <div class="flex items-center gap-2 font-mono text-xs">
         <span class="px-2.5 py-1 rounded bg-tide-variant border border-tide-border text-tide-text-secondary">
-          Click tabs or buttons below to interact
+          Interactive simulation &middot; click tabs or run commands below
         </span>
       </div>
     </div>
@@ -29,10 +29,10 @@ import TerminalMockup from '../TerminalMockup.astro';
     <!-- 2-Column Side-by-Side: Developer Prompt / Status (Left) + Interactive Ratatui Terminal (Right) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       
-      <!-- Left Column: Developer Prompt & Active Session Telemetry (4 cols) -->
+      <!-- Left Column: Telemetry & Shortcuts (4 cols) -->
       <div class="lg:col-span-4 space-y-5">
         
-        <!-- DevThread-style "Developer prompt" box -->
+        <!-- Quick start command box -->
         <div class="p-5 rounded-lg border border-tide-border bg-tide-surface font-mono text-xs space-y-3">
           <div class="text-[11px] text-tide-muted uppercase tracking-wider">
             Quick start command
@@ -41,17 +41,17 @@ import TerminalMockup from '../TerminalMockup.astro';
             &gt; tide .
           </div>
           <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-            Scans your Git project, prepares isolated copies for your agents, and loads your favorite AI tools.
+            Inspects the current Git repository, parses <code class="text-tide-accent font-mono text-[11px]">tide.toml</code>, initializes worktree sandboxes, and spawns the multiplexer.
           </p>
         </div>
 
-        <!-- Session Status & Evidence Box -->
+        <!-- Session Status & Telemetry Box -->
         <div class="p-5 rounded-lg border border-tide-border bg-tide-surface font-mono text-xs space-y-4">
           <div class="flex items-center justify-between pb-2 border-b border-tide-border text-[11px] text-tide-muted">
-            <span>Live Workspace</span>
+            <span>Multiplexed Sessions</span>
             <span class="text-tide-success flex items-center gap-1 font-bold">
               <span class="w-2 h-2 rounded-full bg-tide-success animate-pulse"></span>
-              3 Agents Active
+              3 Active PTYs
             </span>
           </div>
 
@@ -65,38 +65,46 @@ import TerminalMockup from '../TerminalMockup.astro';
               <span class="px-1.5 py-0.5 rounded bg-tide-accent/10 text-tide-accent text-[10px] font-bold">Refactoring</span>
             </div>
             <div class="p-2.5 rounded bg-tide-bg border border-tide-border flex items-center justify-between text-xs">
-              <span class="font-bold text-tide-text">[3] powershell (Host)</span>
+              <span class="font-bold text-tide-text">[3] host (PowerShell)</span>
               <span class="px-1.5 py-0.5 rounded bg-tide-muted/20 text-tide-text-secondary text-[10px]">Idle</span>
             </div>
           </div>
 
-          <!-- Plain-English Badges -->
+          <!-- Kernel & Worktree Guarantees -->
           <div class="pt-2 border-t border-tide-border space-y-1.5 text-[11px]">
             <div class="flex items-center gap-2 text-tide-text-secondary font-sans">
-              <span class="text-tide-success font-bold font-mono">✓ Safe</span>
-              <span>Agents cannot overwrite each other's edits</span>
+              <span class="text-tide-success font-bold font-mono">✓ Worktree</span>
+              <span>Isolated branches prevent index race conditions</span>
             </div>
             <div class="flex items-center gap-2 text-tide-text-secondary font-sans">
-              <span class="text-tide-success font-bold font-mono">✓ Guard</span>
-              <span>All background servers shut down automatically</span>
+              <span class="text-tide-success font-bold font-mono">✓ JobObject</span>
+              <span>Child processes terminated deterministically</span>
+            </div>
+            <div class="flex items-center gap-2 text-tide-text-secondary font-sans">
+              <span class="text-tide-success font-bold font-mono">✓ ConPTY</span>
+              <span>60 FPS ring buffer avoids event loop stalls</span>
             </div>
           </div>
         </div>
 
         <!-- Quick Hotkeys Strip -->
         <div class="p-4 rounded-lg border border-tide-border bg-tide-surface text-[11px] font-mono text-tide-text-secondary space-y-1.5">
-          <div class="text-[10px] uppercase tracking-wider text-tide-muted font-bold mb-1">Keyboard shortcuts</div>
+          <div class="text-[10px] uppercase tracking-wider text-tide-muted font-bold mb-1">Essential Shortcuts</div>
           <div class="flex items-center justify-between">
-            <span>Switch Agent Tab</span>
+            <span>Next Agent Tab</span>
             <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold">Ctrl+Tab</kbd>
           </div>
           <div class="flex items-center justify-between">
-            <span>Compare Diffs</span>
+            <span>Diff Review</span>
             <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold">Ctrl+G</kbd>
           </div>
           <div class="flex items-center justify-between">
-            <span>Command Menu</span>
+            <span>Command Palette</span>
             <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold">Ctrl+P</kbd>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Verify Worktree</span>
+            <kbd class="px-1.5 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-accent font-bold">v</kbd>
           </div>
         </div>
 
@@ -108,8 +116,8 @@ import TerminalMockup from '../TerminalMockup.astro';
           <div class="p-2 text-[11px] text-tide-muted font-mono flex items-center justify-between border-b border-tide-border mb-1">
             <span class="flex items-center gap-2">
               <span class="text-tide-accent font-bold">●</span>
-              <span class="text-tide-text font-bold">Interactive Terminal IDE Workspace</span>
-              <span class="text-[10px] hidden sm:inline text-tide-muted">(Click tabs or type below)</span>
+              <span class="text-tide-text font-bold">Terminal IDE Workspace Simulation</span>
+              <span class="text-[10px] hidden sm:inline text-tide-muted">(Click tabs or type commands below)</span>
             </span>
             <span class="text-tide-accent text-[10px]">Pure Rust &middot; 60 FPS</span>
           </div>

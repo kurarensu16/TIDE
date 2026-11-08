@@ -1,27 +1,28 @@
 ---
-// SectionWhatYouKeep.astro - 03 / WHY DEVELOPERS USE IT (Plain-English Edition)
+// SectionWhatYouKeep.astro - 03 / WHY DEVELOPERS USE IT
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <section id="what-you-keep" class="py-20 border-b border-tide-border bg-tide-bg relative scroll-mt-14">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
-    <!-- DevThread-style section label -->
+    <!-- Section label -->
     <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
-      03 / WHY DEVELOPERS USE IT
+      03 / SYSTEMS ARCHITECTURE
     </div>
 
     <!-- Header Row -->
     <div class="max-w-3xl mb-12">
       <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono mb-3">
-        Built for speed.<br />
-        Kept lightweight.
+        Zero bloat.<br />
+        Systems-level precision.
       </h2>
       <p class="text-sm sm:text-base text-tide-text-secondary leading-relaxed font-sans">
-        Everything you need to manage multiple coding agents comfortably, with none of the bloat.
+        Engineered as a compact, self-contained terminal binary. No Electron runtimes, no background daemons, and zero ghost processes.
       </p>
     </div>
 
-    <!-- DevThread Asymmetric Bento Grid (1 tall featured card left + 4 cards right) -->
+    <!-- Asymmetric Bento Grid (1 tall featured card left + 4 cards right) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
       <!-- Featured Left Card (5 cols, spans 2 rows) -->
@@ -31,42 +32,42 @@
 
         <div>
           <!-- Icon / Badge -->
-          <div class="w-10 h-10 rounded-lg bg-tide-variant border border-tide-border flex items-center justify-center text-tide-accent mb-6 font-mono font-bold text-lg">
-            ⚡
+          <div class="w-10 h-10 rounded-lg bg-tide-variant border border-tide-border flex items-center justify-center text-tide-accent mb-6 font-mono font-bold text-sm">
+            JOB
           </div>
 
           <h3 class="text-xl sm:text-2xl font-bold text-tide-text font-mono mb-2">
-            Zero Ghost Processes
+            Deterministic Process Teardown
           </h3>
           
           <div class="text-xs text-tide-accent font-mono mb-4 font-semibold">
-            "When you quit an agent, it actually quits."
+            Win32 Job Objects & Unix Process Groups
           </div>
 
           <p class="text-xs sm:text-sm text-tide-text-secondary leading-relaxed font-sans mb-6">
-            TIDE binds child processes directly to the Windows kernel. You'll never have to open Task Manager again just to kill lingering background Node, Python, or Cargo servers holding onto port 3000 or 8080.
+            TIDE assigns every spawned agent child process to a dedicated Win32 Job Object configured with <code class="text-tide-accent font-mono text-[11px]">JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code>. Compilers, background watchers, and dev servers can never outlive their host tab.
           </p>
 
           <!-- Guarantees list -->
           <div class="space-y-3 font-mono text-xs border-t border-tide-border pt-5">
             <div class="flex items-center justify-between p-2.5 rounded bg-tide-bg border border-tide-border">
-              <span class="text-tide-accent font-bold">100% Process Cleanup</span>
+              <span class="text-tide-accent font-bold">100% Child Tree Teardown</span>
               <span class="text-[10px] text-tide-success">✓ Automatic</span>
             </div>
             <div class="flex items-center justify-between p-2.5 rounded bg-tide-bg border border-tide-border">
               <span class="text-tide-text">No Lingering Port Locks</span>
-              <span class="text-[10px] text-tide-success">✓ Clean Ports</span>
+              <span class="text-[10px] text-tide-success">✓ Clean Sockets</span>
             </div>
             <div class="flex items-center justify-between p-2.5 rounded bg-tide-bg border border-tide-border">
-              <span class="text-tide-muted">No Task Manager Hunting</span>
+              <span class="text-tide-muted">No Task Manager Scavenging</span>
               <span class="text-[10px] text-tide-accent">Guaranteed</span>
             </div>
           </div>
         </div>
 
         <div class="pt-6 mt-6 border-t border-tide-border text-[11px] text-tide-muted font-sans flex items-center justify-between">
-          <span>Protected by native Windows JobObjects</span>
-          <a href="/docs#jobobjects" class="text-tide-accent hover:underline font-mono">Learn more &rarr;</a>
+          <span>Protected by kernel Job Objects</span>
+          <a href={`${base}/docs#jobobjects`} class="text-tide-accent hover:underline font-mono">Learn more &rarr;</a>
         </div>
       </div>
 
@@ -77,17 +78,17 @@
         <div class="p-6 rounded-xl border border-tide-border bg-tide-surface flex flex-col justify-between hover:border-tide-border-active transition-all group">
           <div>
             <div class="text-[11px] font-mono text-tide-accent mb-2 font-bold">
-              // Private Workspaces
+              // Git Worktrees
             </div>
             <h4 class="text-base font-bold text-tide-text font-mono mb-2">
-              Code while agents work
+              Non-Destructive Parallel Branching
             </h4>
             <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-              Each agent works on its own isolated copy of your code. You can keep writing in your main editor while 2 or 3 agents build features in the background.
+              Each agent executes in an isolated detached worktree. Run multiple concurrent agents while continuing your primary work without Git index locks or dirty state conflicts.
             </p>
           </div>
           <div class="pt-4 mt-4 border-t border-tide-border text-[10px] text-tide-muted font-sans">
-            Powered by lightweight Git worktrees
+            Native Git 2.30+ worktree lifecycle
           </div>
         </div>
 
@@ -95,17 +96,17 @@
         <div class="p-6 rounded-xl border border-tide-border bg-tide-surface flex flex-col justify-between hover:border-tide-border-active transition-all group">
           <div>
             <div class="text-[11px] font-mono text-tide-accent mb-2 font-bold">
-              // Smooth 60 FPS
+              // ConPTY Frame Pacing
             </div>
             <h4 class="text-base font-bold text-tide-text font-mono mb-2">
-              Lag-free terminal
+              Paced 60 FPS Terminal Multiplexing
             </h4>
             <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-              TIDE smoothly paces output so even massive 10,000-line build dumps or streaming AI responses won't lag your screen or delay your keystrokes.
+              Output streams are batched through high-throughput ring buffers. High-frequency compiler diagnostics and LLM token streams render smoothly without locking the terminal event loop.
             </p>
           </div>
           <div class="pt-4 mt-4 border-t border-tide-border text-[10px] text-tide-muted font-sans">
-            Instant keystroke response (&lt;25ms)
+            Sub-25ms keyboard input latency
           </div>
         </div>
 
@@ -113,17 +114,17 @@
         <div class="p-6 rounded-xl border border-tide-border bg-tide-surface flex flex-col justify-between hover:border-tide-border-active transition-all group">
           <div>
             <div class="text-[11px] font-mono text-tide-accent mb-2 font-bold">
-              // Simple Configuration
+              // Declarative Config
             </div>
             <h4 class="text-base font-bold text-tide-text font-mono mb-2">
-              Custom agent shortcuts
+              Project-Scoped Agent Toolchains
             </h4>
             <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-              One clean configuration file (<code class="text-tide-accent font-mono text-[11px]">tide.toml</code>) to configure your favorite AI agents, launch commands, and keyboard shortcuts.
+              Define agent commands, task prompts, and hotkeys in a single <code class="text-tide-accent font-mono text-[11px]">tide.toml</code> file. Interoperate with Claude Code, Antigravity, Aider, or custom shell pipelines.
             </p>
           </div>
           <div class="pt-4 mt-4 border-t border-tide-border text-[10px] text-tide-muted font-sans">
-            Claude Code, Antigravity, Aider, or custom
+            Standard TOML configuration
           </div>
         </div>
 
@@ -131,17 +132,17 @@
         <div class="p-6 rounded-xl border border-tide-border bg-tide-surface flex flex-col justify-between hover:border-tide-border-active transition-all group">
           <div>
             <div class="text-[11px] font-mono text-tide-accent mb-2 font-bold">
-              // Lightweight Binary
+              // Minimal Footprint
             </div>
             <h4 class="text-base font-bold text-tide-text font-mono mb-2">
-              Starts in &lt;0.5s &middot; ~14 MB RAM
+              ~14 MB Resident & &lt;0.5s Startup
             </h4>
             <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-              Built from scratch in pure Rust, not Electron. It starts in under half a second and won't hog your laptop's battery or memory.
+              Compiled to a standalone native binary in pure Rust. No webview wrappers, no V8 runtime overhead, and negligible background CPU consumption.
             </p>
           </div>
           <div class="pt-4 mt-4 border-t border-tide-border text-[10px] text-tide-muted font-sans">
-            Zero Chromium webviews &middot; zero Node overhead
+            Zero Electron &middot; zero Chromium dependencies
           </div>
         </div>
 

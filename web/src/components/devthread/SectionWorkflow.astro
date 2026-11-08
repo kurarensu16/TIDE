@@ -1,11 +1,12 @@
 ---
-// SectionWorkflow.astro - 02 / THE WORKFLOW (Plain-English Edition)
+// SectionWorkflow.astro - 02 / THE WORKFLOW
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <section id="how-it-works" class="py-20 border-b border-tide-border bg-tide-surface/30 relative scroll-mt-14">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
-    <!-- DevThread-style section label -->
+    <!-- Section label -->
     <div class="text-xs uppercase tracking-widest text-tide-accent font-mono mb-4">
       02 / THE WORKFLOW
     </div>
@@ -13,19 +14,19 @@
     <!-- Header Row -->
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
       <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-tide-text leading-tight font-mono">
-        You set the task.<br />
-        TIDE keeps your project safe.
+        Deterministic agent lifecycle.<br />
+        From worktree isolation to fast-forward merge.
       </h2>
       <a
-        href="/docs#pipeline"
+        href={`${base}/docs#pipeline`}
         class="text-xs font-mono text-tide-accent hover:underline flex items-center gap-1 shrink-0"
       >
-        <span>Read the step-by-step guide</span>
+        <span>Read systems pipeline documentation</span>
         <span>↗</span>
       </a>
     </div>
 
-    <!-- 5-Step Connected Flow (DevThread Horizontal Rhythm) -->
+    <!-- 5-Step Connected Flow -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 relative mb-12">
       
       <!-- Step 01 -->
@@ -38,13 +39,13 @@
             <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
           </div>
           <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
-            Launch in seconds
+            Single-Command Boot
           </h3>
           <div class="text-[11px] text-tide-muted font-mono mb-2">
-            You &middot; terminal
+            Host &middot; Fast Native PTY
           </div>
           <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-            Type <code class="text-tide-accent font-mono">tide .</code> in any folder or press <kbd class="px-1 py-0.5 rounded bg-tide-variant text-[10px] border border-tide-border text-tide-text font-mono">Ctrl+N</kbd>. TIDE launches instantly in under half a second.
+            Launch instantly with <code class="text-tide-accent font-mono">tide .</code> in under 500ms. Reads <code class="text-tide-accent font-mono text-[11px]">tide.toml</code> and spins up the multiplexed terminal loop.
           </p>
         </div>
       </div>
@@ -59,13 +60,13 @@
             <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
           </div>
           <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
-            Instant Private Copy
+            Worktree Isolation
           </h3>
           <div class="text-[11px] text-tide-muted font-mono mb-2">
-            Private sandbox
+            Dedicated Git Worktree
           </div>
           <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-            TIDE gives the agent its own private copy of your code (using Git worktrees). It can edit, test, and delete files without touching your main branch.
+            Each agent tab allocates an ephemeral Git worktree under <code class="text-tide-accent font-mono text-[11px]">.tide/worktrees/</code>. Agents mutate code without polluting your main index.
           </p>
         </div>
       </div>
@@ -80,13 +81,13 @@
             <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
           </div>
           <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
-            Automatic Cleanup Guard
+            Kernel Containment
           </h3>
           <div class="text-[11px] text-tide-muted font-mono mb-2">
-            Zero ghost servers
+            Job Objects &middot; No Orphans
           </div>
           <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-            Every agent runs in a protected sandbox. When you close the session, every single child process, test runner, and background server is instantly killed.
+            Subprocesses and tool calls are bound to OS Job Objects. When a tab terminates, all child trees, background servers, and sockets are cleanly torn down.
           </p>
         </div>
       </div>
@@ -101,13 +102,13 @@
             <span class="text-tide-muted text-[10px] font-mono">&rarr;</span>
           </div>
           <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
-            Compare Changes
+            In-TUI Diff Inspection
           </h3>
           <div class="text-[11px] text-tide-muted font-mono mb-2">
-            You inspect &middot; side-by-side
+            Unified & Split &middot; Diagnostics
           </div>
           <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-            Hit <kbd class="px-1 py-0.5 rounded bg-tide-variant text-[10px] border border-tide-border text-tide-text font-mono">Ctrl+G</kbd> to see a clean side-by-side diff of everything the agent modified before anything enters your real project.
+            Review agent-generated changes with side-by-side diffs. Jump to compiler diagnostic errors directly from output with <kbd class="px-1 py-0.5 rounded bg-tide-variant text-[10px] border border-tide-border text-tide-text font-mono">Ctrl+G</kbd>.
           </p>
         </div>
       </div>
@@ -122,27 +123,27 @@
             <span class="text-tide-success text-[10px] font-mono">✓</span>
           </div>
           <h3 class="text-sm font-bold text-tide-text font-mono mb-1">
-            Merge Cleanly
+            Verification & Merge
           </h3>
           <div class="text-[11px] text-tide-muted font-mono mb-2">
-            One keystroke &middot; all clean
+            Pre-flight test &middot; Fast-forward
           </div>
           <p class="text-xs text-tide-text-secondary leading-relaxed font-sans">
-            Once you verify the code works, approve it with one key. TIDE merges changes cleanly and removes the temporary workspace with zero leftover clutter.
+            Press <kbd class="px-1 py-0.5 rounded bg-tide-variant text-[10px] border border-tide-border text-tide-text font-mono">v</kbd> to run test suites in the worktree, then merge verified changes into main and clean up the worktree cleanly.
           </p>
         </div>
       </div>
 
     </div>
 
-    <!-- Stepped Prompt Callout (DevThread Style) -->
+    <!-- Stepped Prompt Callout -->
     <div class="p-4 sm:p-5 rounded-lg border border-tide-border bg-tide-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono text-xs">
       <div class="flex items-center gap-3">
         <span class="text-tide-accent font-bold select-none">&gt;</span>
-        <span class="text-tide-text font-bold">Start with <code class="text-tide-accent">“tide .”</code></span>
+        <span class="text-tide-text font-bold">Non-destructive concurrency: <code class="text-tide-accent">“tide .”</code></span>
       </div>
       <div class="text-tide-text-secondary text-[11px] font-sans">
-        Workflows run in isolated copies. Your main branch stays safe until you approve changes. <a href="/docs#quickstart" class="text-tide-accent hover:underline">Read quickstart &rarr;</a>
+        Worktrees remain decoupled until explicitly verified and merged. <a href={`${base}/docs#quickstart`} class="text-tide-accent hover:underline font-mono">Read quickstart &rarr;</a>
       </div>
     </div>
 
