@@ -6,8 +6,6 @@ import PixelLogoHero from '../components/PixelLogoHero.astro';
 import SectionProblem from '../components/devthread/SectionProblem.astro';
 import SectionWorkflow from '../components/devthread/SectionWorkflow.astro';
 import SectionWhatYouKeep from '../components/devthread/SectionWhatYouKeep.astro';
-import SectionConcreteWorkspace from '../components/devthread/SectionConcreteWorkspace.astro';
-import ThemePreviewer from '../components/ThemePreviewer.astro';
 import SectionCompatibility from '../components/devthread/SectionCompatibility.astro';
 import SectionOpenSource from '../components/devthread/SectionOpenSource.astro';
 import Footer from '../components/Footer.astro';
@@ -154,19 +152,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <!-- 02 / THE WORKFLOW -->
       <SectionWorkflow />
 
-      <!-- 03 / WHAT YOU KEEP -->
+      <!-- 03 / SYSTEMS ARCHITECTURE -->
       <SectionWhatYouKeep />
 
-      <!-- 04 / A CONCRETE WORKSPACE (Interactive Ratatui Simulation) -->
-      <SectionConcreteWorkspace />
-
-      <!-- 05 / THEMES & RATATUI PALETTES -->
-      <ThemePreviewer />
-
-      <!-- 06 / COMPATIBILITY & SYSTEMS EVIDENCE -->
+      <!-- 04 / COMPATIBILITY & SYSTEMS EVIDENCE -->
       <SectionCompatibility />
 
-      <!-- 07 / OPEN SOURCE & GETTING STARTED -->
+      <!-- 05 / OPEN SOURCE & GETTING STARTED -->
       <SectionOpenSource />
     </main>
 
