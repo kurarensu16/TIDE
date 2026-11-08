@@ -595,15 +595,52 @@ fn draw_file_preview_pane(f: &mut Frame, app: &mut App, area: Rect) {
     let view_height = code_body_chunk.height as usize;
     let scroll = app.preview_scroll;
     let visible_lines = lines.iter().skip(scroll).take(view_height);
+    let selection_bounds = app.editor_selection_bounds();
+    let bracket_pair = app.editor_matching_bracket_pos();
 
     let mut rendered_lines = Vec::new();
     for (idx, line) in visible_lines.enumerate() {
         let line_num = scroll + idx + 1;
+        let row = line_num - 1;
         let mut spans = vec![
             Span::styled(format!("{:>4} │ ", line_num), Style::default().fg(theme.text_muted)),
         ];
 
-        spans.extend(render_code_line_with_search(line, line_num - 1, app));
+        let line_spans = render_code_line_with_search(line, row, app);
+        let mut styled_spans = if let Some(((s_row, s_col), (e_row, e_col))) = selection_bounds {
+            if row >= s_row && row <= e_row {
+                let start_col = if row == s_row { s_col } else { 0 };
+                let end_col = if row == e_row { e_col } else { usize::MAX };
+                apply_selection_to_spans(line_spans, start_col, end_col, theme.selection_bg, theme.selection_fg)
+            } else {
+                line_spans
+            }
+        } else {
+            line_spans
+        };
+
+        if let Some(((b1_row, b1_col), (b2_row, b2_col))) = bracket_pair {
+            if row == b1_row {
+                styled_spans = apply_selection_to_spans(
+                    styled_spans,
+                    b1_col,
+                    b1_col + 1,
+                    theme.accent,
+                    Color::Black,
+                );
+            }
+            if row == b2_row && (b2_row != b1_row || b2_col != b1_col) {
+                styled_spans = apply_selection_to_spans(
+                    styled_spans,
+                    b2_col,
+                    b2_col + 1,
+                    theme.accent,
+                    Color::Black,
+                );
+            }
+        }
+
+        spans.extend(styled_spans);
         rendered_lines.push(Line::from(spans));
     }
 
@@ -634,13 +671,13 @@ fn draw_file_preview_pane(f: &mut Frame, app: &mut App, area: Rect) {
     
     let status_w = status_chunk.width as usize;
     let (pos_len, desc_text) = if status_w >= 120 {
-        (22, "Ctrl+z: Undo │ Ctrl+y: Redo │ Ctrl+d: Dup │ Alt+↑↓: Move │ Ctrl+/: Comment │ Ctrl+s: Save  ")
+        (22, "Ctrl+c: Copy │ Ctrl+v: Paste │ Ctrl+x: Cut │ Ctrl+z: Undo │ Ctrl+s: Save │ Ctrl+/: Comment  ")
     } else if status_w >= 95 {
-        (20, "Ctrl+z: Undo │ Ctrl+y: Redo │ Ctrl+d: Dup │ Ctrl+/: Comment │ Ctrl+s: Save  ")
+        (20, "Ctrl+c: Copy │ Ctrl+v: Paste │ Ctrl+z: Undo │ Ctrl+d: Dup │ Ctrl+s: Save  ")
     } else if status_w >= 70 {
-        (18, "Ctrl+z: Undo │ Ctrl+y: Redo │ Ctrl+d: Dup │ Ctrl+s: Save  ")
+        (18, "Ctrl+c: Copy │ Ctrl+v: Paste │ Ctrl+s: Save  ")
     } else if status_w >= 50 {
-        (16, "Ctrl+z: Undo │ Ctrl+s: Save  ")
+        (16, "Ctrl+c/v │ Ctrl+s: Save  ")
     } else if status_w >= 35 {
         (14, "Ctrl+s: Save  ")
     } else {
@@ -1136,6 +1173,71 @@ fn clamp_spans_to_width<'a>(spans: Vec<Span<'a>>, max_w: usize) -> Vec<Span<'a>>
             break;
         }
     }
+    result
+}
+
+// Helper: Applies selection background/foreground styles to a line's spans
+fn apply_selection_to_spans<'a>(
+    spans: Vec<Span<'a>>,
+    sel_start_col: usize,
+    sel_end_col: usize,
+    sel_bg: Color,
+    sel_fg: Color,
+) -> Vec<Span<'a>> {
+    if sel_start_col >= sel_end_col {
+        return spans;
+    }
+
+    if spans.is_empty() {
+        return vec![Span::styled(" ", Style::default().bg(sel_bg).fg(sel_fg))];
+    }
+
+    let mut result = Vec::new();
+    let mut curr_col = 0;
+
+    for span in spans {
+        let text = span.content.as_ref();
+        let char_count = text.chars().count();
+        let span_start = curr_col;
+        let span_end = curr_col + char_count;
+
+        if span_end <= sel_start_col || span_start >= sel_end_col {
+            // Completely outside selection
+            result.push(span);
+        } else if span_start >= sel_start_col && span_end <= sel_end_col {
+            // Completely inside selection
+            result.push(Span::styled(span.content, Style::default().bg(sel_bg).fg(sel_fg)));
+        } else {
+            // Partial overlap - split by characters
+            let mut before = String::new();
+            let mut inside = String::new();
+            let mut after = String::new();
+
+            for (i, ch) in text.chars().enumerate() {
+                let c_idx = span_start + i;
+                if c_idx < sel_start_col {
+                    before.push(ch);
+                } else if c_idx < sel_end_col {
+                    inside.push(ch);
+                } else {
+                    after.push(ch);
+                }
+            }
+
+            if !before.is_empty() {
+                result.push(Span::styled(before, span.style));
+            }
+            if !inside.is_empty() {
+                result.push(Span::styled(inside, Style::default().bg(sel_bg).fg(sel_fg)));
+            }
+            if !after.is_empty() {
+                result.push(Span::styled(after, span.style));
+            }
+        }
+
+        curr_col += char_count;
+    }
+
     result
 }
 
@@ -2191,6 +2293,18 @@ fn draw_help_modal(f: &mut Frame, app: &App, area: Rect) {
             Span::styled("Code Preview: type directly to edit buffer, [Ctrl+s] save to disk", Style::default().fg(theme.text_primary)),
         ]),
         Line::from(vec![
+            Span::styled("Ctrl+c / Ctrl+v ", Style::default().fg(theme.warning)),
+            Span::styled("Code Editor: [Ctrl+c] Copy line/selection, [Ctrl+v] Paste from clipboard", Style::default().fg(theme.text_primary)),
+        ]),
+        Line::from(vec![
+            Span::styled("Ctrl+x / Ctrl+a ", Style::default().fg(theme.warning)),
+            Span::styled("Code Editor: [Ctrl+x] Cut line/selection, [Ctrl+a] Select all text", Style::default().fg(theme.text_primary)),
+        ]),
+        Line::from(vec![
+            Span::styled("Shift+Arrows    ", Style::default().fg(theme.warning)),
+            Span::styled("Code Editor: Select text with Shift+Left/Right/Up/Down/Home/End", Style::default().fg(theme.text_primary)),
+        ]),
+        Line::from(vec![
             Span::styled("Ctrl+z / Ctrl+y ", Style::default().fg(theme.warning)),
             Span::styled("Code Editor: [Ctrl+z] Undo, [Ctrl+y / Ctrl+Shift+Z] Redo edits", Style::default().fg(theme.text_primary)),
         ]),
@@ -2542,6 +2656,7 @@ fn draw_agent_launch_modal(f: &mut Frame, app: &mut App, area: Rect) {
         .constraints([
             Constraint::Length(2),  // Title and subtitle
             Constraint::Min(0),     // Agent options cards
+            Constraint::Length(3),  // Task prompt input box (.tide/TASK.md)
             Constraint::Length(2),  // Worktree & teardown info
             Constraint::Length(2),  // Confirm & Cancel buttons
         ])
@@ -2621,12 +2736,32 @@ fn draw_agent_launch_modal(f: &mut Frame, app: &mut App, area: Rect) {
 
     f.render_widget(Paragraph::new(option_lines), chunks[1]);
 
+    // Task prompt input box (.tide/TASK.md)
+    let task_block = Block::default()
+        .title(" Task Brief / Prompt (optional — saved to .tide/TASK.md) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(theme.accent));
+    let task_display = if app.agent_launch_task_input.is_empty() {
+        Line::from(vec![
+            Span::styled(" Type task description for this agent worktree...", Style::default().fg(theme.text_muted)),
+            Span::styled("█", Style::default().fg(theme.accent)),
+        ])
+    } else {
+        Line::from(vec![
+            Span::raw(" "),
+            Span::styled(&app.agent_launch_task_input, Style::default().fg(theme.text_primary).add_modifier(Modifier::BOLD)),
+            Span::styled("█", Style::default().fg(theme.accent)),
+        ])
+    };
+    f.render_widget(Paragraph::new(task_display).block(task_block), chunks[2]);
+
     // System info
     let info_lines = vec![
         Line::styled("• Dedicated branch & worktree (.tide/worktrees/<id>) created automatically.", Style::default().fg(theme.text_muted)),
-        Line::styled("• All processes bound to Windows Job Object for clean teardown.", Style::default().fg(theme.text_muted)),
+        Line::styled("• All processes bound to Job Object / process group for clean teardown.", Style::default().fg(theme.text_muted)),
     ];
-    f.render_widget(Paragraph::new(info_lines), chunks[2]);
+    f.render_widget(Paragraph::new(info_lines), chunks[3]);
 
     // Action Buttons: [ ✔ Confirm & Launch ] and [ ✖ Cancel ]
     let selected_agent_name = match app.agent_launch_selected_idx {
@@ -2647,11 +2782,11 @@ fn draw_agent_launch_modal(f: &mut Frame, app: &mut App, area: Rect) {
         ),
         Span::raw("   "),
         Span::styled(
-            "↑/↓ or j/k: Pan/Highlight │ 1-3: Quick Pick",
+            "↑/↓ or Tab: Select Agent │ Type: Task Brief",
             Style::default().fg(theme.text_secondary),
         ),
     ];
-    f.render_widget(Paragraph::new(Line::from(button_spans)).alignment(Alignment::Center), chunks[3]);
+    f.render_widget(Paragraph::new(Line::from(button_spans)).alignment(Alignment::Center), chunks[4]);
 }
 
 fn draw_theme_modal(f: &mut Frame, app: &mut App, area: Rect) {

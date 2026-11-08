@@ -5,11 +5,13 @@
 mod agents;
 mod app;
 mod config;
+mod editor;
 mod explorer;
 mod git;
 mod icons;
 mod job_object;
 mod logo;
+mod palette;
 mod terminal;
 mod theme;
 mod ui;
@@ -23,7 +25,7 @@ use anyhow::Result;
 use clap::Parser;
 use crossterm::{
     cursor::{EnableBlinking, Show},
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event},
+    event::{self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -62,7 +64,7 @@ fn main() -> Result<()> {
     }
 
     let mut stdout = stdout();
-    if let Err(e) = execute!(stdout, EnterAlternateScreen, EnableMouseCapture, EnableBlinking, Show) {
+    if let Err(e) = execute!(stdout, EnterAlternateScreen, EnableMouseCapture, EnableBracketedPaste, EnableBlinking, Show) {
         let _ = disable_raw_mode();
         eprintln!("Failed to enter alternate screen: {}", e);
         return Ok(());
@@ -76,7 +78,7 @@ fn main() -> Result<()> {
         Err(e) => {
             // Restore terminal before printing error
             let _ = disable_raw_mode();
-            let _ = execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
+            let _ = execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture, DisableBracketedPaste);
             eprintln!("Failed to initialize TIDE: {}", e);
             std::process::exit(1);
         }
@@ -103,7 +105,7 @@ fn main() -> Result<()> {
             last_render = Instant::now();
         }
 
-        // Poll for input events (keyboard + mouse) with small timeout to allow backpressure
+        // Poll for input events (keyboard + mouse + bracketed paste) with small timeout to allow backpressure
         if event::poll(Duration::from_millis(8))? {
             match event::read()? {
                 Event::Key(key) => {
@@ -114,6 +116,9 @@ fn main() -> Result<()> {
                 Event::Mouse(mouse) => {
                     app.handle_mouse_event(mouse);
                 }
+                Event::Paste(text) => {
+                    app.handle_bracketed_paste(text);
+                }
                 _ => {}
             }
         }
@@ -121,7 +126,7 @@ fn main() -> Result<()> {
 
     // Graceful teardown
     let _ = disable_raw_mode();
-    let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture);
+    let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture, DisableBracketedPaste);
     let _ = terminal.show_cursor();
 
     println!("TIDE terminated cleanly. All sessions closed.");

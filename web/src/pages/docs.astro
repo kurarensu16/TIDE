@@ -4,6 +4,7 @@ import '../styles/global.css';
 import WaveLogo from '../components/WaveLogo.astro';
 import Footer from '../components/Footer.astro';
 import ShortcutsModal from '../components/ShortcutsModal.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <!doctype html>
@@ -16,8 +17,8 @@ import ShortcutsModal from '../components/ShortcutsModal.astro';
       name="description"
       content="Official technical documentation, architecture specifications, API references, and tide.toml configuration guides for TIDE."
     />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/x-icon" href={`${base}/favicon.ico`} />
+    <link rel="icon" type="image/svg+xml" href={`${base}/logo.svg`} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -33,7 +34,7 @@ import ShortcutsModal from '../components/ShortcutsModal.astro';
         
         <!-- Left: Brand & Docs Badge -->
         <div class="flex items-center gap-3 z-10">
-          <a href="/" class="flex items-center group">
+          <a href={`${base}/`} class="flex items-center group">
             <span class="font-bold text-lg tracking-widest text-tide-text group-hover:text-tide-accent transition-colors font-mono">
               TIDE
             </span>
@@ -60,7 +61,7 @@ import ShortcutsModal from '../components/ShortcutsModal.astro';
 
         <!-- Right: Actions -->
         <div class="flex items-center gap-3 text-xs font-mono">
-          <a href="/" class="hover:text-tide-accent text-tide-text-secondary transition-colors hidden sm:inline">
+          <a href={`${base}/`} class="hover:text-tide-accent text-tide-text-secondary transition-colors hidden sm:inline">
             ← Home
           </a>
           <a

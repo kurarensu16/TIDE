@@ -137,6 +137,8 @@ TIDE is designed from the ground up for frictionless, keyboard-first navigation.
 | `Alt + 1` .. `Alt + 9` | Jump directly to terminal tab `N` |
 | `Shift + PageUp` / `Shift + PageDown` | Scroll terminal buffer history up / down |
 | `Shift + End` | Jump back to bottom of live terminal output |
+| `Ctrl + Shift + V` | Paste text from system clipboard into active terminal |
+| `Ctrl + G` | Jump to compiler/test diagnostic (`file:line:col`) in Editor |
 | `Ctrl + =` / `Ctrl + -` / `Ctrl + 0` | Zoom in / Zoom out / Reset terminal scaling |
 
 ### File Explorer (`ActivePane::Explorer`)
@@ -155,7 +157,18 @@ TIDE is designed from the ground up for frictionless, keyboard-first navigation.
 | Key | Action |
 | --- | --- |
 | `Arrow Keys` | Move cursor through document |
-| `Type characters` | Direct inline editing |
+| `Shift + Arrow Keys` / `Home` / `End` | Select and highlight text ranges |
+| `Left Click + Drag` | Interactive mouse selection across lines and columns |
+| `Right Click` | Copy selection or paste clipboard text at cursor |
+| `Type characters` | Direct inline editing (replaces selection if active) |
+| `Enter` / `Tab` / `Shift + Tab` | Smart auto-indent newline / Indent / Outdent line or selection |
+| `Ctrl + C` | Copy selected text or current line to system clipboard |
+| `Ctrl + X` | Cut selected text or current line to system clipboard |
+| `Ctrl + V` | Paste text from clipboard (replaces active selection) |
+| `Ctrl + A` | Select all document text |
+| `Ctrl + D` | Duplicate current line |
+| `Alt + Up` / `Alt + Down` | Move current line up / down |
+| `Ctrl + /` | Toggle single-line comment on current line |
 | `Ctrl + S` | Save file changes to disk |
 | `Ctrl + Z` / `Ctrl + Y` | Undo / Redo edits |
 | `Ctrl + F` | Search within open file |
@@ -184,6 +197,7 @@ TIDE is designed from the ground up for frictionless, keyboard-first navigation.
 | `j` / `Down` & `k` / `Up` | Select agent session |
 | `Enter` | Jump directly into agent's interactive PTY terminal |
 | `d` | Inspect agent's isolated worktree diff |
+| `v` | Run pre-merge verification command in agent's isolated worktree |
 | `m` | Merge agent worktree into current branch |
 | `s` | Stop active agent session (kills full process tree via Job Object) |
 | `x` | Discard agent session and clean up worktree/branch |
@@ -249,6 +263,8 @@ TIDE/
 ├── src/
 │   ├── main.rs               # CLI entrypoint, raw terminal setup & cleanup
 │   ├── app.rs                # Core App state, keyboard/mouse event dispatch
+│   ├── editor.rs             # Multi-tab code editor, auto-indent, bracket match & clipboard
+│   ├── palette.rs            # Fuzzy Command Palette actions & dispatch
 │   ├── ui.rs                 # Ratatui layout engine, widget rendering & modals
 │   ├── theme.rs              # 10 color themes, palette tokens & theme modal
 │   ├── terminal.rs           # PTY session management & vt100 grid integration

@@ -61,12 +61,14 @@ impl Default for WorktreeBootstrapConfig {
 pub struct WorktreeConfig {
     #[serde(default)]
     pub bootstrap: WorktreeBootstrapConfig,
+    pub verify_command: Option<String>,
 }
 
 impl Default for WorktreeConfig {
     fn default() -> Self {
         Self {
             bootstrap: WorktreeBootstrapConfig::default(),
+            verify_command: None,
         }
     }
 }

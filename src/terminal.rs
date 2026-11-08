@@ -151,9 +151,9 @@ impl TerminalSession {
 
         let child = pair.slave.spawn_command(cmd)?;
 
-        // Attach child process tree to the Windows Job Object
-        #[cfg(windows)]
+        // Attach child process tree to the Job Object (Windows) or process group tracker (Unix)
         if let Some(pid) = child.process_id() {
+            #[cfg(windows)]
             unsafe {
                 let proc_handle = OpenProcess(
                     PROCESS_SET_QUOTA | PROCESS_TERMINATE,
@@ -164,6 +164,10 @@ impl TerminalSession {
                     let _ = job.assign_process(proc_handle as _);
                     CloseHandle(proc_handle);
                 }
+            }
+            #[cfg(not(windows))]
+            {
+                let _ = job.assign_process(pid as usize);
             }
         }
 
@@ -227,6 +231,11 @@ impl TerminalSession {
             w.flush()?;
         }
         Ok(())
+    }
+
+    /// Sends raw bytes to the child PTY (alias for write_input).
+    pub fn write_bytes(&self, bytes: &[u8]) -> anyhow::Result<()> {
+        self.write_input(bytes)
     }
 
     /// Resizes the PTY and virtual screen grid when the UI pane changes dimensions.

@@ -39,50 +39,7 @@ pub enum ExplorerOpModal {
     },
 }
 
-#[derive(Clone, Debug)]
-pub enum PaletteAction {
-    OpenFile(PathBuf),
-    SpawnTerminal(String, String, Vec<String>),
-    LaunchAgentModal,
-    StopAgent,
-    RefreshGit,
-    RefreshExplorer,
-    ToggleExplorer,
-    TogglePreview,
-    ToggleGit,
-    ToggleAgents,
-    MaximizeToggle,
-    OpenInVSCode,
-    SaveFile,
-    UndoEdit,
-    RedoEdit,
-    DuplicateLine,
-    DeleteLine,
-    ToggleComment,
-    CycleIconTheme,
-    ShowFindInFile,
-    ShowGlobalSearch,
-    PromptNewItem,
-    PromptRenameItem,
-    PromptDeleteItem,
-    GitStageAll,
-    GitUnstageAll,
-    GitCommitModal,
-    GitBranchModal,
-    GitStashModal,
-    GitPush,
-    GitPull,
-    OpenThemeModal,
-    SetColorTheme(crate::theme::ColorTheme),
-    TerminalZoomIn,
-    TerminalZoomOut,
-    TerminalZoomReset,
-    TerminalScrollUp,
-    TerminalScrollDown,
-    TerminalScrollReset,
-    ToggleWelcomeScreen,
-    Quit,
-}
+pub use crate::editor::EditorTab;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum WelcomePromptModal {
@@ -102,19 +59,6 @@ pub struct WorkspaceEntry {
 }
 
 #[derive(Clone, Debug)]
-pub struct EditorTab {
-    pub file_path: PathBuf,
-    pub file_name: String,
-    pub lines: Vec<String>,
-    pub scroll: usize,
-    pub cursor: (usize, usize),
-    pub dirty: bool,
-    pub is_pinned: bool,
-    pub undo_stack: Vec<(Vec<String>, (usize, usize))>,
-    pub redo_stack: Vec<(Vec<String>, (usize, usize))>,
-}
-
-#[derive(Clone, Debug)]
 pub struct GrepResult {
     pub file_path: PathBuf,
     pub rel_path: String,
@@ -123,14 +67,6 @@ pub struct GrepResult {
     pub match_start: usize,
     #[allow(dead_code)]
     pub match_len: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct PaletteItem {
-    pub icon: String,
-    pub title: String,
-    pub subtitle: String,
-    pub action: PaletteAction,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -194,6 +130,7 @@ pub struct App {
     pub terminal_menu_modal_area: ratatui::layout::Rect,
     pub show_agent_launch_modal: bool,
     pub agent_launch_selected_idx: usize,
+    pub agent_launch_task_input: String,
     pub agent_launch_modal_area: ratatui::layout::Rect,
     pub show_diff_modal: bool,
     pub diff_modal_content: Option<(String, String)>,
@@ -251,6 +188,8 @@ pub struct App {
     pub welcome_prompt_modal: WelcomePromptModal,
     pub welcome_area: ratatui::layout::Rect,
     pub config: crate::config::TideConfig,
+    pub editor_selection_anchor: Option<(usize, usize)>,
+    pub internal_clipboard: String,
 }
 
 impl App {
@@ -334,6 +273,7 @@ impl App {
             terminal_menu_modal_area: ratatui::layout::Rect::default(),
             show_agent_launch_modal: false,
             agent_launch_selected_idx: 0,
+            agent_launch_task_input: String::new(),
             agent_launch_modal_area: ratatui::layout::Rect::default(),
             show_diff_modal: false,
             diff_modal_content: None,
@@ -393,6 +333,8 @@ impl App {
             welcome_filter_query: String::new(),
             welcome_prompt_modal: WelcomePromptModal::None,
             welcome_area: ratatui::layout::Rect::default(),
+            editor_selection_anchor: None,
+            internal_clipboard: String::new(),
         };
 
         if !is_home {
@@ -401,17 +343,20 @@ impl App {
 
         app.update_file_preview();
 
-        // Spawn initial shell session (Configured custom shell or platform default)
-        let (shell_title, shell_cmd) = if let Some(ref custom) = app.config.workspace.default_shell {
-            (custom.clone(), custom.clone())
-        } else {
-            #[cfg(windows)]
-            { ("PowerShell".to_string(), "powershell.exe".to_string()) }
-            #[cfg(not(windows))]
-            { ("Bash".to_string(), "bash".to_string()) }
-        };
+        // Spawn initial shell session (Configured custom shell or platform default; skipped in unit tests for speed)
+        #[cfg(not(test))]
+        {
+            let (shell_title, shell_cmd) = if let Some(ref custom) = app.config.workspace.default_shell {
+                (custom.clone(), custom.clone())
+            } else {
+                #[cfg(windows)]
+                { ("PowerShell".to_string(), "powershell.exe".to_string()) }
+                #[cfg(not(windows))]
+                { ("Bash".to_string(), "bash".to_string()) }
+            };
 
-        app.spawn_terminal(&shell_title, &shell_cmd, &[])?;
+            app.spawn_terminal(&shell_title, &shell_cmd, &[])?;
+        }
 
         Ok(app)
     }
@@ -692,368 +637,49 @@ impl App {
         }
     }
 
-    pub fn open_file(&mut self, path: &std::path::Path, pinned: bool) {
-        // If already open in an existing tab, simply switch to it!
-        if let Some(pos) = self.editor_tabs.iter().position(|t| t.file_path == path) {
-            if pinned {
-                self.editor_tabs[pos].is_pinned = true;
-            }
-            self.switch_editor_tab(pos);
+    pub fn handle_bracketed_paste(&mut self, text: String) {
+        if self.show_help {
             return;
         }
-
-        // Save current tab state before pushing a new one
-        self.sync_active_tab_from_state();
-
-        let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-        let lines = match std::fs::read_to_string(path) {
-            Ok(content) => content.lines().map(|s| s.to_string()).collect(),
-            Err(_) => {
-                let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
-                vec![
-                    format!("Binary or non-UTF8 file: {}", file_name),
-                    format!("Size: {} bytes", size),
-                    String::new(),
-                    "Press Ctrl+E to open in external application (VS Code).".to_string(),
-                ]
+        if self.explorer_op_modal != ExplorerOpModal::None {
+            match &mut self.explorer_op_modal {
+                ExplorerOpModal::NewItem { input, .. } => input.push_str(&text),
+                ExplorerOpModal::Rename { input, .. } => input.push_str(&text),
+                _ => {}
             }
-        };
-
-        let new_tab = EditorTab {
-            file_path: path.to_path_buf(),
-            file_name,
-            lines,
-            scroll: 0,
-            cursor: (0, 0),
-            dirty: false,
-            is_pinned: pinned,
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
-        };
-
-        // If previewing (not pinned) and current active tab is clean and unpinned, reuse it (VS Code preview tab behavior)
-        if !pinned && !self.editor_tabs.is_empty() {
-            let active = self.active_editor_tab_idx;
-            if active < self.editor_tabs.len() && !self.editor_tabs[active].dirty && !self.editor_tabs[active].is_pinned {
-                self.editor_tabs[active] = new_tab;
-                self.sync_state_from_active_tab();
-                self.ensure_editor_tab_visible(active);
-                return;
-            }
-        }
-
-        self.editor_tabs.push(new_tab);
-        let new_idx = self.editor_tabs.len() - 1;
-        self.active_editor_tab_idx = new_idx;
-        self.sync_state_from_active_tab();
-        self.ensure_editor_tab_visible(new_idx);
-    }
-
-    pub fn mark_editor_dirty(&mut self) {
-        self.editor_dirty = true;
-        if self.active_editor_tab_idx < self.editor_tabs.len() {
-            self.editor_tabs[self.active_editor_tab_idx].dirty = true;
-            self.editor_tabs[self.active_editor_tab_idx].is_pinned = true;
-        }
-    }
-
-    pub fn sync_active_tab_from_state(&mut self) {
-        if self.active_editor_tab_idx < self.editor_tabs.len() {
-            if let Some((_, lines)) = &self.preview_content {
-                self.editor_tabs[self.active_editor_tab_idx].lines = lines.clone();
-            }
-            self.editor_tabs[self.active_editor_tab_idx].scroll = self.preview_scroll;
-            self.editor_tabs[self.active_editor_tab_idx].cursor = self.editor_cursor;
-            self.editor_tabs[self.active_editor_tab_idx].dirty = self.editor_dirty;
-        }
-    }
-
-    pub fn sync_state_from_active_tab(&mut self) {
-        if self.active_editor_tab_idx < self.editor_tabs.len() {
-            let tab = &self.editor_tabs[self.active_editor_tab_idx];
-            self.preview_content = Some((tab.file_name.clone(), tab.lines.clone()));
-            self.editor_file_path = Some(tab.file_path.clone());
-            self.preview_scroll = tab.scroll;
-            self.editor_cursor = tab.cursor;
-            self.editor_dirty = tab.dirty;
-        } else {
-            self.preview_content = None;
-            self.editor_file_path = None;
-            self.preview_scroll = 0;
-            self.editor_cursor = (0, 0);
-            self.editor_dirty = false;
-        }
-    }
-
-    pub fn switch_editor_tab(&mut self, idx: usize) {
-        if idx < self.editor_tabs.len() {
-            self.sync_active_tab_from_state();
-            self.active_editor_tab_idx = idx;
-            self.sync_state_from_active_tab();
-            self.ensure_editor_tab_visible(idx);
-        }
-    }
-
-    pub fn close_editor_tab(&mut self, idx: usize) {
-        if idx < self.editor_tabs.len() {
-            let closed_name = self.editor_tabs[idx].file_name.clone();
-            self.editor_tabs.remove(idx);
-            if self.editor_tabs.is_empty() {
-                self.active_editor_tab_idx = 0;
-                self.preview_content = None;
-                self.editor_file_path = None;
-                self.preview_scroll = 0;
-                self.editor_cursor = (0, 0);
-                self.editor_dirty = false;
-            } else {
-                if self.active_editor_tab_idx >= self.editor_tabs.len() {
-                    self.active_editor_tab_idx = self.editor_tabs.len() - 1;
-                }
-                self.sync_state_from_active_tab();
-                let current_idx = self.active_editor_tab_idx;
-                self.ensure_editor_tab_visible(current_idx);
-            }
-            self.status_message = Some((
-                format!("Closed tab: {}", closed_name),
-                std::time::Instant::now(),
-            ));
-        }
-    }
-
-    pub fn next_editor_tab(&mut self) {
-        if !self.editor_tabs.is_empty() {
-            let next = (self.active_editor_tab_idx + 1) % self.editor_tabs.len();
-            self.switch_editor_tab(next);
-        }
-    }
-
-    pub fn prev_editor_tab(&mut self) {
-        if !self.editor_tabs.is_empty() {
-            let prev = (self.active_editor_tab_idx + self.editor_tabs.len() - 1) % self.editor_tabs.len();
-            self.switch_editor_tab(prev);
-        }
-    }
-
-    pub fn ensure_editor_tab_visible(&mut self, idx: usize) {
-        if idx < self.editor_tab_scroll {
-            self.editor_tab_scroll = idx;
-        } else if idx >= self.editor_tab_scroll + 4 {
-            self.editor_tab_scroll = idx.saturating_sub(3);
-        }
-    }
-
-    pub fn save_editor_content(&mut self) {
-        self.sync_active_tab_from_state();
-        if let (Some(path), Some((_, lines))) = (&self.editor_file_path, &self.preview_content) {
-            let content = lines.join("\r\n");
-            match std::fs::write(path, content) {
-                Ok(_) => {
-                    self.editor_dirty = false;
-                    if self.active_editor_tab_idx < self.editor_tabs.len() {
-                        self.editor_tabs[self.active_editor_tab_idx].dirty = false;
-                    }
-                    self.status_message = Some((
-                        format!("Saved {}", path.file_name().unwrap_or_default().to_string_lossy()),
-                        std::time::Instant::now(),
-                    ));
-                }
-                Err(e) => {
-                    self.status_message = Some((
-                        format!("Failed to save: {}", e),
-                        std::time::Instant::now(),
-                    ));
-                }
-            }
-        }
-    }
-
-    pub fn push_editor_undo_snapshot(&mut self) {
-        if self.active_editor_tab_idx < self.editor_tabs.len() {
-            if let Some((_, lines)) = &self.preview_content {
-                let tab = &mut self.editor_tabs[self.active_editor_tab_idx];
-                if let Some((last_lines, last_cursor)) = tab.undo_stack.last() {
-                    if last_lines == lines && *last_cursor == self.editor_cursor {
-                        return;
-                    }
-                }
-                tab.undo_stack.push((lines.clone(), self.editor_cursor));
-                if tab.undo_stack.len() > 100 {
-                    tab.undo_stack.remove(0);
-                }
-                tab.redo_stack.clear();
-            }
-        }
-    }
-
-    pub fn editor_undo(&mut self) {
-        if self.active_editor_tab_idx >= self.editor_tabs.len() {
             return;
         }
-        let tab = &mut self.editor_tabs[self.active_editor_tab_idx];
-        if let Some((prev_lines, prev_cursor)) = tab.undo_stack.pop() {
-            if let Some((_, curr_lines)) = &self.preview_content {
-                tab.redo_stack.push((curr_lines.clone(), self.editor_cursor));
-                if tab.redo_stack.len() > 100 {
-                    tab.redo_stack.remove(0);
+        if self.show_find_in_file {
+            self.find_query.push_str(&text);
+            self.update_find_matches();
+            return;
+        }
+        if self.show_global_search {
+            self.global_search_query.push_str(&text);
+            return;
+        }
+        if self.show_commit_modal {
+            self.commit_message_input.push_str(&text);
+            return;
+        }
+        if self.show_branch_modal && self.branch_is_creating {
+            self.branch_new_name.push_str(&text);
+            return;
+        }
+        if self.show_command_palette {
+            self.palette_query.push_str(&text);
+            return;
+        }
+        match self.active_pane {
+            ActivePane::FilePreview => {
+                self.editor_paste_text(&text);
+            }
+            ActivePane::Terminal => {
+                if let Some(session) = self.terminals.get(self.active_terminal_idx) {
+                    let _ = session.write_bytes(text.as_bytes());
                 }
             }
-            if let Some((_, lines)) = &mut self.preview_content {
-                *lines = prev_lines.clone();
-            }
-            tab.lines = prev_lines;
-            self.editor_cursor = prev_cursor;
-            tab.cursor = prev_cursor;
-            self.mark_editor_dirty();
-            self.status_message = Some(("⤺ Undo".to_string(), std::time::Instant::now()));
-        } else {
-            self.status_message = Some(("Already at oldest change".to_string(), std::time::Instant::now()));
-        }
-    }
-
-    pub fn editor_redo(&mut self) {
-        if self.active_editor_tab_idx >= self.editor_tabs.len() {
-            return;
-        }
-        let tab = &mut self.editor_tabs[self.active_editor_tab_idx];
-        if let Some((next_lines, next_cursor)) = tab.redo_stack.pop() {
-            if let Some((_, curr_lines)) = &self.preview_content {
-                tab.undo_stack.push((curr_lines.clone(), self.editor_cursor));
-                if tab.undo_stack.len() > 100 {
-                    tab.undo_stack.remove(0);
-                }
-            }
-            if let Some((_, lines)) = &mut self.preview_content {
-                *lines = next_lines.clone();
-            }
-            tab.lines = next_lines;
-            self.editor_cursor = next_cursor;
-            tab.cursor = next_cursor;
-            self.mark_editor_dirty();
-            self.status_message = Some(("⤻ Redo".to_string(), std::time::Instant::now()));
-        } else {
-            self.status_message = Some(("Already at newest change".to_string(), std::time::Instant::now()));
-        }
-    }
-
-    pub fn duplicate_current_line(&mut self) {
-        if self.preview_content.is_none() {
-            return;
-        }
-        self.push_editor_undo_snapshot();
-        if let Some((_, lines)) = &mut self.preview_content {
-            if lines.is_empty() {
-                lines.push(String::new());
-            }
-            let row = self.editor_cursor.0.min(lines.len().saturating_sub(1));
-            let line_to_dup = lines[row].clone();
-            lines.insert(row + 1, line_to_dup);
-            self.editor_cursor.0 += 1;
-            self.mark_editor_dirty();
-            self.status_message = Some(("Duplicated line (Ctrl+D)".to_string(), std::time::Instant::now()));
-        }
-    }
-
-    pub fn move_current_line_up(&mut self) {
-        let row = self.editor_cursor.0;
-        if row == 0 {
-            return;
-        }
-        let can_move = self.preview_content.as_ref().map(|(_, l)| row < l.len()).unwrap_or(false);
-        if !can_move {
-            return;
-        }
-        self.push_editor_undo_snapshot();
-        if let Some((_, lines)) = &mut self.preview_content {
-            lines.swap(row, row - 1);
-            self.editor_cursor.0 -= 1;
-            if self.editor_cursor.0 < self.preview_scroll {
-                self.preview_scroll = self.editor_cursor.0;
-            }
-            self.mark_editor_dirty();
-        }
-    }
-
-    pub fn move_current_line_down(&mut self) {
-        let row = self.editor_cursor.0;
-        let can_move = self.preview_content.as_ref().map(|(_, l)| row + 1 < l.len()).unwrap_or(false);
-        if !can_move {
-            return;
-        }
-        self.push_editor_undo_snapshot();
-        if let Some((_, lines)) = &mut self.preview_content {
-            lines.swap(row, row + 1);
-            self.editor_cursor.0 += 1;
-            let view_height = self.preview_area.height.saturating_sub(3) as usize;
-            if self.editor_cursor.0 >= self.preview_scroll + view_height.max(1) {
-                self.preview_scroll += 1;
-            }
-            self.mark_editor_dirty();
-        }
-    }
-
-    pub fn delete_current_line(&mut self) {
-        if self.preview_content.as_ref().map(|(_, l)| l.is_empty()).unwrap_or(true) {
-            return;
-        }
-        self.push_editor_undo_snapshot();
-        if let Some((_, lines)) = &mut self.preview_content {
-            let row = self.editor_cursor.0.min(lines.len().saturating_sub(1));
-            if lines.len() > 1 {
-                lines.remove(row);
-                if self.editor_cursor.0 >= lines.len() {
-                    self.editor_cursor.0 = lines.len() - 1;
-                }
-            } else {
-                lines[0].clear();
-                self.editor_cursor.0 = 0;
-            }
-            let max_col = lines.get(self.editor_cursor.0).map(|l| l.chars().count()).unwrap_or(0);
-            self.editor_cursor.1 = self.editor_cursor.1.min(max_col);
-            self.mark_editor_dirty();
-            self.status_message = Some(("Deleted line (Ctrl+K)".to_string(), std::time::Instant::now()));
-        }
-    }
-
-    pub fn toggle_comment_on_current_line(&mut self) {
-        if self.preview_content.as_ref().map(|(_, l)| l.is_empty()).unwrap_or(true) {
-            return;
-        }
-        let ext = self.editor_file_path
-            .as_ref()
-            .and_then(|p| p.extension())
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_ascii_lowercase();
-
-        let comment_prefix = match ext.as_str() {
-            "py" | "sh" | "bash" | "zsh" | "ps1" | "toml" | "yaml" | "yml" | "dockerfile" => "# ",
-            "sql" => "-- ",
-            _ => "// ",
-        };
-
-        self.push_editor_undo_snapshot();
-        let row = self.editor_cursor.0;
-        if let Some((_, lines)) = &mut self.preview_content {
-            let row = row.min(lines.len().saturating_sub(1));
-            if let Some(line) = lines.get_mut(row) {
-                let trimmed = line.trim_start();
-                let indent_len = line.len() - trimmed.len();
-                let indent = line[..indent_len].to_string();
-
-                if trimmed.starts_with(comment_prefix) {
-                    *line = format!("{}{}", indent, &trimmed[comment_prefix.len()..]);
-                    self.editor_cursor.1 = self.editor_cursor.1.saturating_sub(comment_prefix.len());
-                } else if trimmed.starts_with(comment_prefix.trim_end()) {
-                    let p = comment_prefix.trim_end();
-                    *line = format!("{}{}", indent, &trimmed[p.len()..]);
-                    self.editor_cursor.1 = self.editor_cursor.1.saturating_sub(p.len());
-                } else {
-                    *line = format!("{}{}{}", indent, comment_prefix, trimmed);
-                    self.editor_cursor.1 += comment_prefix.len();
-                }
-                self.mark_editor_dirty();
-                self.status_message = Some(("Toggled comment (Ctrl+/)".to_string(), std::time::Instant::now()));
-            }
+            _ => {}
         }
     }
 
@@ -1239,588 +865,6 @@ impl App {
         self.global_search_selected_idx = 0;
     }
 
-    pub fn get_palette_items(&self) -> Vec<PaletteItem> {
-        let q = self.palette_query.trim().to_lowercase();
-        let is_command_mode = q.starts_with('>');
-
-        let p_icon = |action: &str| crate::icons::action_icon(action, self.icon_theme).to_string();
-        let s_icon = |shell: &str| crate::icons::shell_icon(shell, self.icon_theme).to_string();
-        let pane_ic = |p: &str| crate::icons::pane_icon(p, self.icon_theme).to_string();
-
-        if is_command_mode {
-            let cmd_query = q.trim_start_matches('>').trim();
-            let all_commands = vec![
-                PaletteItem {
-                    icon: s_icon("cmd"),
-                    title: "Terminal: New Command Prompt (cmd.exe)".to_string(),
-                    subtitle: "Spawn a native Windows Command Prompt shell".to_string(),
-                    action: PaletteAction::SpawnTerminal("cmd.exe".to_string(), "cmd.exe".to_string(), vec![]),
-                },
-                PaletteItem {
-                    icon: s_icon("powershell"),
-                    title: "Terminal: New PowerShell Tab".to_string(),
-                    subtitle: "Spawn a Windows PowerShell session".to_string(),
-                    action: PaletteAction::SpawnTerminal("PowerShell".to_string(), "powershell.exe".to_string(), vec![]),
-                },
-                PaletteItem {
-                    icon: s_icon("bash"),
-                    title: "Terminal: New Git Bash Tab".to_string(),
-                    subtitle: "Spawn a Git for Windows Bash shell".to_string(),
-                    action: PaletteAction::SpawnTerminal("Git Bash".to_string(), "bash.exe".to_string(), vec![]),
-                },
-                PaletteItem {
-                    icon: s_icon("wsl"),
-                    title: "Terminal: New WSL / Ubuntu Tab".to_string(),
-                    subtitle: "Spawn a Windows Subsystem for Linux shell".to_string(),
-                    action: PaletteAction::SpawnTerminal("WSL".to_string(), "wsl.exe".to_string(), vec![]),
-                },
-                PaletteItem {
-                    icon: p_icon("agent"),
-                    title: "Agents: Launch New AI Agent".to_string(),
-                    subtitle: "Start Antigravity, Claude Code, or isolated shell (Ctrl+A)".to_string(),
-                    action: PaletteAction::LaunchAgentModal,
-                },
-                PaletteItem {
-                    icon: p_icon("stop"),
-                    title: "Agents: Stop Current Agent Session".to_string(),
-                    subtitle: "Halt running process tree, keep worktree changes (s)".to_string(),
-                    action: PaletteAction::StopAgent,
-                },
-                PaletteItem {
-                    icon: pane_ic("explorer"),
-                    title: "View: Toggle Explorer Panel".to_string(),
-                    subtitle: "Show or hide file tree explorer (F2)".to_string(),
-                    action: PaletteAction::ToggleExplorer,
-                },
-                PaletteItem {
-                    icon: pane_ic("preview"),
-                    title: "View: Toggle Code Preview Panel".to_string(),
-                    subtitle: "Show or hide file editor / code preview (F5)".to_string(),
-                    action: PaletteAction::TogglePreview,
-                },
-                PaletteItem {
-                    icon: pane_ic("git"),
-                    title: "View: Toggle Git Status Panel".to_string(),
-                    subtitle: "Show or hide git commits and status (F3)".to_string(),
-                    action: PaletteAction::ToggleGit,
-                },
-                PaletteItem {
-                    icon: pane_ic("agents"),
-                    title: "View: Toggle Agents Panel".to_string(),
-                    subtitle: "Show or hide active agent sessions (F4)".to_string(),
-                    action: PaletteAction::ToggleAgents,
-                },
-                PaletteItem {
-                    icon: p_icon("maximize"),
-                    title: "View: Maximize / Restore Active Pane".to_string(),
-                    subtitle: "Expand current pane to full screen (F11)".to_string(),
-                    action: PaletteAction::MaximizeToggle,
-                },
-                PaletteItem {
-                    icon: p_icon("refresh"),
-                    title: "Git: Refresh Repository Status".to_string(),
-                    subtitle: "Reload working tree changes and commit log".to_string(),
-                    action: PaletteAction::RefreshGit,
-                },
-                PaletteItem {
-                    icon: p_icon("refresh"),
-                    title: "Explorer: Refresh Directory Files".to_string(),
-                    subtitle: "Rescan workspace folder tree".to_string(),
-                    action: PaletteAction::RefreshExplorer,
-                },
-                PaletteItem {
-                    icon: p_icon("new_item"),
-                    title: "Explorer: New File or Folder".to_string(),
-                    subtitle: "Create a new file or directory (press 'a' in Explorer)".to_string(),
-                    action: PaletteAction::PromptNewItem,
-                },
-                PaletteItem {
-                    icon: p_icon("rename"),
-                    title: "Explorer: Rename Selected Item".to_string(),
-                    subtitle: "Rename current file or folder (press 'r' in Explorer)".to_string(),
-                    action: PaletteAction::PromptRenameItem,
-                },
-                PaletteItem {
-                    icon: p_icon("delete"),
-                    title: "Explorer: Delete Selected Item".to_string(),
-                    subtitle: "Permanently delete current file or folder (press 'd' in Explorer)".to_string(),
-                    action: PaletteAction::PromptDeleteItem,
-                },
-                PaletteItem {
-                    icon: p_icon("vscode"),
-                    title: "File: Open in External VS Code".to_string(),
-                    subtitle: "Launch current file in Microsoft VS Code (Ctrl+E)".to_string(),
-                    action: PaletteAction::OpenInVSCode,
-                },
-                PaletteItem {
-                    icon: p_icon("save"),
-                    title: "File: Save Current File Buffer".to_string(),
-                    subtitle: "Write buffer changes to disk (Ctrl+S)".to_string(),
-                    action: PaletteAction::SaveFile,
-                },
-                PaletteItem {
-                    icon: p_icon("undo"),
-                    title: "Edit: Undo Change".to_string(),
-                    subtitle: "Revert last edit in active editor buffer (Ctrl+Z)".to_string(),
-                    action: PaletteAction::UndoEdit,
-                },
-                PaletteItem {
-                    icon: p_icon("redo"),
-                    title: "Edit: Redo Change".to_string(),
-                    subtitle: "Re-apply reverted edit in active editor buffer (Ctrl+Y / Ctrl+Shift+Z)".to_string(),
-                    action: PaletteAction::RedoEdit,
-                },
-                PaletteItem {
-                    icon: p_icon("duplicate"),
-                    title: "Edit: Duplicate Current Line".to_string(),
-                    subtitle: "Copy current line directly beneath cursor (Ctrl+D)".to_string(),
-                    action: PaletteAction::DuplicateLine,
-                },
-                PaletteItem {
-                    icon: p_icon("delete"),
-                    title: "Edit: Delete Current Line".to_string(),
-                    subtitle: "Remove entire current line (Ctrl+K)".to_string(),
-                    action: PaletteAction::DeleteLine,
-                },
-                PaletteItem {
-                    icon: p_icon("comment"),
-                    title: "Edit: Toggle Line Comment".to_string(),
-                    subtitle: "Toggle comment prefix for current line (Ctrl+/)".to_string(),
-                    action: PaletteAction::ToggleComment,
-                },
-                PaletteItem {
-                    icon: p_icon("search"),
-                    title: "Find: Search in Current File".to_string(),
-                    subtitle: "Find text within active editor tab (Ctrl+F)".to_string(),
-                    action: PaletteAction::ShowFindInFile,
-                },
-                PaletteItem {
-                    icon: p_icon("search"),
-                    title: "Find: Search Across Workspace".to_string(),
-                    subtitle: "Grep text across all project files (Ctrl+Shift+F)".to_string(),
-                    action: PaletteAction::ShowGlobalSearch,
-                },
-                PaletteItem {
-                    icon: pane_ic("wave"),
-                    title: "Appearance: Toggle Icon Theme".to_string(),
-                    subtitle: format!("Switch between Nerd Fonts, Emojis, and Unicode (Current: {})", self.icon_theme.name()),
-                    action: PaletteAction::CycleIconTheme,
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Switch Color Theme (Tokyo Night, Catppuccin, Nord, Gruvbox, Cyberpunk, Dracula, Rosé Pine, Monokai Pro, One Dark)".to_string(),
-                    subtitle: format!("Live preview and customize workspace color palette (Current: {}, Key: F12)", self.color_theme.name()),
-                    action: PaletteAction::OpenThemeModal,
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Tokyo Night".to_string(),
-                    subtitle: "Clean midnight blue storm aesthetic with soft neon lavender & sky blue".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::TokyoNight),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Catppuccin Mocha".to_string(),
-                    subtitle: "Soothing, luxurious dark pastel palette with mauve, lavender, and peach".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::CatppuccinMocha),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Nord".to_string(),
-                    subtitle: "Arctic, north-bluish cold aesthetic with frost blues and polar snow tones".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::Nord),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Gruvbox Dark".to_string(),
-                    subtitle: "Warm retro groove palette with golden amber, forest aqua, and burnt orange".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::GruvboxDark),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Cyberpunk".to_string(),
-                    subtitle: "High-voltage synthwave with neon fuchsia pink, electric cyan, and laser yellow".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::Cyberpunk),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: TIDE Ocean".to_string(),
-                    subtitle: "Default deep sapphire oceanic dark mode with cyan and electric wave accents".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::TideOcean),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Dracula".to_string(),
-                    subtitle: "Gothic dark purple-charcoal with neon orchid pink, cyan, and lime accents".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::Dracula),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Rosé Pine".to_string(),
-                    subtitle: "Alluring dark pine dusk palette with blush rose, lilac iris, and foam gold".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::RosePine),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: Monokai Pro".to_string(),
-                    subtitle: "Volcanic matte charcoal with sublime yellow, coral magenta, and mint green".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::MonokaiPro),
-                },
-                PaletteItem {
-                    icon: p_icon("theme"),
-                    title: "Theme: One Dark Pro".to_string(),
-                    subtitle: "Clean neutral graphite slate with iconic chalk blue, purple, and sage green".to_string(),
-                    action: PaletteAction::SetColorTheme(crate::theme::ColorTheme::OneDarkPro),
-                },
-                PaletteItem {
-                    icon: p_icon("branch"),
-                    title: "Git: Stage All Changes".to_string(),
-                    subtitle: "Stage all modified and untracked files into index (git add -A)".to_string(),
-                    action: PaletteAction::GitStageAll,
-                },
-                PaletteItem {
-                    icon: p_icon("branch"),
-                    title: "Git: Unstage All Changes".to_string(),
-                    subtitle: "Reset staged files back to working tree (git restore --staged .)".to_string(),
-                    action: PaletteAction::GitUnstageAll,
-                },
-                PaletteItem {
-                    icon: p_icon("commit"),
-                    title: "Git: Commit Staged Changes".to_string(),
-                    subtitle: "Open commit prompt to record staged changes (git commit -m)".to_string(),
-                    action: PaletteAction::GitCommitModal,
-                },
-                PaletteItem {
-                    icon: p_icon("branch"),
-                    title: "Git: Switch or Create Branch (b)".to_string(),
-                    subtitle: "Checkout, create, search, and manage Git branches".to_string(),
-                    action: PaletteAction::GitBranchModal,
-                },
-                PaletteItem {
-                    icon: p_icon("stash"),
-                    title: "Git: Stash Manager (z)".to_string(),
-                    subtitle: "List, save, pop, apply, drop, and diff Git stashes".to_string(),
-                    action: PaletteAction::GitStashModal,
-                },
-                PaletteItem {
-                    icon: p_icon("push"),
-                    title: "Git: Push to Remote".to_string(),
-                    subtitle: "Push local commits to upstream tracking branch (git push)".to_string(),
-                    action: PaletteAction::GitPush,
-                },
-                PaletteItem {
-                    icon: p_icon("pull"),
-                    title: "Git: Pull from Remote".to_string(),
-                    subtitle: "Fetch and integrate remote changes (git pull)".to_string(),
-                    action: PaletteAction::GitPull,
-                },
-                PaletteItem {
-                    icon: p_icon("zoom"),
-                    title: "Terminal: Zoom In / Enlarge (Ctrl+=)".to_string(),
-                    subtitle: "Increase terminal display scale factor and viewport focus".to_string(),
-                    action: PaletteAction::TerminalZoomIn,
-                },
-                PaletteItem {
-                    icon: p_icon("zoom"),
-                    title: "Terminal: Zoom Out / Shrink (Ctrl+-)".to_string(),
-                    subtitle: "Decrease terminal display scale factor".to_string(),
-                    action: PaletteAction::TerminalZoomOut,
-                },
-                PaletteItem {
-                    icon: p_icon("zoom"),
-                    title: "Terminal: Reset Zoom (Ctrl+0)".to_string(),
-                    subtitle: "Reset terminal display scale to 100% default".to_string(),
-                    action: PaletteAction::TerminalZoomReset,
-                },
-                PaletteItem {
-                    icon: p_icon("scroll"),
-                    title: "Terminal: Scroll Up Output History (Shift+PageUp)".to_string(),
-                    subtitle: "Scroll back into previous command output buffer".to_string(),
-                    action: PaletteAction::TerminalScrollUp,
-                },
-                PaletteItem {
-                    icon: p_icon("scroll"),
-                    title: "Terminal: Scroll Down Output History (Shift+PageDown)".to_string(),
-                    subtitle: "Scroll toward live output buffer".to_string(),
-                    action: PaletteAction::TerminalScrollDown,
-                },
-                PaletteItem {
-                    icon: p_icon("scroll"),
-                    title: "Terminal: Jump to Live View (Shift+End)".to_string(),
-                    subtitle: "Reset scrollback offset to active interactive prompt".to_string(),
-                    action: PaletteAction::TerminalScrollReset,
-                },
-                PaletteItem {
-                    icon: pane_ic("explorer"),
-                    title: "Workspace: Open Welcome & Workspace Launcher (<Ctrl-o>)".to_string(),
-                    subtitle: "Browse detected projects, recent workspaces, open folder, or clone repo".to_string(),
-                    action: PaletteAction::ToggleWelcomeScreen,
-                },
-                PaletteItem {
-                    icon: p_icon("quit"),
-                    title: "Quit TIDE".to_string(),
-                    subtitle: "Exit workspace and terminate all Job Objects (Ctrl+Q)".to_string(),
-                    action: PaletteAction::Quit,
-                },
-            ];
-
-            if cmd_query.is_empty() {
-                all_commands
-            } else {
-                all_commands
-                    .into_iter()
-                    .filter(|item| {
-                        item.title.to_lowercase().contains(cmd_query)
-                            || item.subtitle.to_lowercase().contains(cmd_query)
-                    })
-                    .collect()
-            }
-        } else {
-            // File Search mode
-            let mut file_items = Vec::new();
-            for entry in &self.explorer.entries {
-                if entry.is_dir {
-                    continue;
-                }
-                let rel_path = entry
-                    .path
-                    .strip_prefix(&self.workspace_dir)
-                    .unwrap_or(&entry.path)
-                    .to_string_lossy()
-                    .to_string();
-
-                if q.is_empty()
-                    || entry.name.to_lowercase().contains(&q)
-                    || rel_path.to_lowercase().contains(&q)
-                {
-                    file_items.push(PaletteItem {
-                        icon: entry.icon_styled(self.icon_theme).0.to_string(),
-                        title: entry.name.clone(),
-                        subtitle: rel_path,
-                        action: PaletteAction::OpenFile(entry.path.clone()),
-                    });
-                }
-            }
-
-            // Also append matching commands if user typed something that matches commands
-            if !q.is_empty() {
-                if "cmd".contains(&q) || "command".contains(&q) {
-                    file_items.push(PaletteItem {
-                        icon: s_icon("cmd"),
-                        title: "New Terminal: Command Prompt (cmd.exe)".to_string(),
-                        subtitle: "Command: Spawn a Windows CMD shell".to_string(),
-                        action: PaletteAction::SpawnTerminal("cmd.exe".to_string(), "cmd.exe".to_string(), vec![]),
-                    });
-                }
-                if "terminal".contains(&q) || "shell".contains(&q) || "powershell".contains(&q) {
-                    file_items.push(PaletteItem {
-                        icon: s_icon("powershell"),
-                        title: "New Terminal: PowerShell".to_string(),
-                        subtitle: "Command: Spawn a PowerShell session".to_string(),
-                        action: PaletteAction::SpawnTerminal("PowerShell".to_string(), "powershell.exe".to_string(), vec![]),
-                    });
-                }
-                if "bash".contains(&q) || "git bash".contains(&q) {
-                    file_items.push(PaletteItem {
-                        icon: s_icon("bash"),
-                        title: "New Terminal: Git Bash".to_string(),
-                        subtitle: "Command: Spawn a Git Bash session".to_string(),
-                        action: PaletteAction::SpawnTerminal("Git Bash".to_string(), "bash.exe".to_string(), vec![]),
-                    });
-                }
-                if "agent".contains(&q) || "claude".contains(&q) || "agy".contains(&q) {
-                    file_items.push(PaletteItem {
-                        icon: p_icon("agent"),
-                        title: "Launch Coding Agent Session".to_string(),
-                        subtitle: "Command: Start Antigravity, Claude Code, or shell".to_string(),
-                        action: PaletteAction::LaunchAgentModal,
-                    });
-                }
-                if "git".contains(&q) {
-                    file_items.push(PaletteItem {
-                        icon: p_icon("branch"),
-                        title: "Git: Refresh Status & Commits".to_string(),
-                        subtitle: "Command: Fetch branch and commit log".to_string(),
-                        action: PaletteAction::RefreshGit,
-                    });
-                }
-            }
-
-            file_items
-        }
-    }
-
-    pub fn execute_palette_action(&mut self, action: PaletteAction) {
-        match action {
-            PaletteAction::OpenFile(path) => {
-                self.open_file(&path, true);
-                self.active_pane = ActivePane::FilePreview;
-                self.explorer.reveal_path(&path);
-                self.status_message = Some((
-                    format!("Opened {}", path.file_name().unwrap_or_default().to_string_lossy()),
-                    std::time::Instant::now(),
-                ));
-            }
-            PaletteAction::SpawnTerminal(title, cmd, args) => {
-                let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-                let _ = self.spawn_terminal(&title, &cmd, &arg_refs);
-                self.active_pane = ActivePane::Terminal;
-            }
-            PaletteAction::LaunchAgentModal => {
-                self.show_agent_launch_modal = true;
-            }
-            PaletteAction::StopAgent => {
-                let _ = self.stop_active_agent();
-            }
-            PaletteAction::RefreshGit => {
-                self.git_info = GitRepoInfo::fetch(&self.workspace_dir.to_string_lossy());
-                self.status_message = Some(("Refreshed Git status".to_string(), std::time::Instant::now()));
-            }
-            PaletteAction::RefreshExplorer => {
-                self.explorer.refresh();
-                self.update_file_preview();
-                self.status_message = Some(("Refreshed Explorer".to_string(), std::time::Instant::now()));
-            }
-            PaletteAction::ToggleExplorer => {
-                self.show_explorer = !self.show_explorer;
-            }
-            PaletteAction::TogglePreview => {
-                self.show_preview = !self.show_preview;
-            }
-            PaletteAction::ToggleGit => {
-                self.show_git = !self.show_git;
-            }
-            PaletteAction::ToggleAgents => {
-                self.show_agents = !self.show_agents;
-            }
-            PaletteAction::MaximizeToggle => {
-                self.is_maximized = !self.is_maximized;
-            }
-            PaletteAction::OpenInVSCode => {
-                if let Some(path) = self.editor_file_path.clone() {
-                    self.open_in_external_editor(&path);
-                }
-            }
-            PaletteAction::SaveFile => {
-                self.save_editor_content();
-            }
-            PaletteAction::UndoEdit => {
-                self.editor_undo();
-                self.active_pane = ActivePane::FilePreview;
-            }
-            PaletteAction::RedoEdit => {
-                self.editor_redo();
-                self.active_pane = ActivePane::FilePreview;
-            }
-            PaletteAction::DuplicateLine => {
-                self.duplicate_current_line();
-                self.active_pane = ActivePane::FilePreview;
-            }
-            PaletteAction::DeleteLine => {
-                self.delete_current_line();
-                self.active_pane = ActivePane::FilePreview;
-            }
-            PaletteAction::ToggleComment => {
-                self.toggle_comment_on_current_line();
-                self.active_pane = ActivePane::FilePreview;
-            }
-            PaletteAction::CycleIconTheme => {
-                self.icon_theme = self.icon_theme.next();
-                self.status_message = Some((
-                    format!("Icon Theme switched to: {}", self.icon_theme.name()),
-                    std::time::Instant::now(),
-                ));
-            }
-            PaletteAction::ShowFindInFile => {
-                self.show_find_in_file = true;
-                self.active_pane = ActivePane::FilePreview;
-                self.update_find_matches();
-            }
-            PaletteAction::ShowGlobalSearch => {
-                self.show_global_search = true;
-                self.global_search_query.clear();
-                self.global_search_results.clear();
-                self.global_search_selected_idx = 0;
-            }
-            PaletteAction::PromptNewItem => {
-                self.prompt_new_item();
-            }
-            PaletteAction::PromptRenameItem => {
-                self.prompt_rename_item();
-            }
-            PaletteAction::PromptDeleteItem => {
-                self.prompt_delete_item();
-            }
-            PaletteAction::GitStageAll => {
-                self.stage_all_git_items();
-            }
-            PaletteAction::GitUnstageAll => {
-                self.unstage_all_git_items();
-            }
-            PaletteAction::GitCommitModal => {
-                self.show_commit_modal = true;
-                self.commit_message_input.clear();
-            }
-            PaletteAction::GitBranchModal => {
-                self.open_branch_modal();
-            }
-            PaletteAction::GitStashModal => {
-                self.open_stash_modal();
-            }
-            PaletteAction::GitPush => {
-                self.push_git();
-            }
-            PaletteAction::GitPull => {
-                self.pull_git();
-            }
-            PaletteAction::OpenThemeModal => {
-                self.show_theme_modal = true;
-                self.previous_color_theme = self.color_theme;
-                self.theme_modal_selected_idx = crate::theme::ColorTheme::ALL
-                    .iter()
-                    .position(|t| *t == self.color_theme)
-                    .unwrap_or(0);
-            }
-            PaletteAction::SetColorTheme(t) => {
-                self.color_theme = t;
-                self.status_message = Some((
-                    format!("Theme switched to: {}", t.name()),
-                    std::time::Instant::now(),
-                ));
-            }
-            PaletteAction::TerminalZoomIn => {
-                self.zoom_in_terminal();
-            }
-            PaletteAction::TerminalZoomOut => {
-                self.zoom_out_terminal();
-            }
-            PaletteAction::TerminalZoomReset => {
-                self.zoom_reset_terminal();
-            }
-            PaletteAction::TerminalScrollUp => {
-                if let Some(session) = self.terminals.get(self.active_terminal_idx) {
-                    session.scroll_up(15);
-                }
-            }
-            PaletteAction::TerminalScrollDown => {
-                if let Some(session) = self.terminals.get(self.active_terminal_idx) {
-                    session.scroll_down(15);
-                }
-            }
-            PaletteAction::TerminalScrollReset => {
-                if let Some(session) = self.terminals.get(self.active_terminal_idx) {
-                    session.scroll_reset();
-                }
-            }
-            PaletteAction::ToggleWelcomeScreen => {
-                self.toggle_welcome_screen();
-            }
-            PaletteAction::Quit => {
-                self.should_quit = true;
-            }
-        }
-    }
-
     pub fn spawn_selected_terminal(&mut self, idx: usize) -> anyhow::Result<()> {
         #[cfg(windows)]
         let res = match idx {
@@ -1876,6 +920,9 @@ impl App {
                 return Err(anyhow::anyhow!(err_str));
             }
         };
+
+        // Write .tide/TASK.md brief in the isolated worktree
+        let _ = wt.write_task_brief(agent_name, task);
 
         // 2. Spawn Terminal in the isolated worktree directory
         let title = format!("{} ({})", agent_name, session_id);
@@ -1942,6 +989,165 @@ impl App {
         }
         self.diff_modal_content = Some(("Agent Diff".to_string(), "No isolated worktree associated with this agent session or no changes made yet.".to_string()));
         self.show_diff_modal = true;
+    }
+
+    /// Runs the configured (or auto-detected) pre-merge verification command in the selected agent's worktree.
+    pub fn verify_active_agent(&mut self) {
+        let Some(agent) = self.agents.get(self.active_agent_idx) else {
+            self.status_message = Some(("No active agent session selected to verify.".to_string(), std::time::Instant::now()));
+            return;
+        };
+        let Some(wt) = agent.worktree.clone() else {
+            self.status_message = Some(("Selected agent has no isolated worktree.".to_string(), std::time::Instant::now()));
+            return;
+        };
+        let agent_name = agent.name.clone();
+
+        let default_cmd = if wt.path.join("Cargo.toml").is_file() {
+            "cargo check"
+        } else if wt.path.join("package.json").is_file() {
+            "npm test"
+        } else {
+            "git status --short"
+        };
+        let verify_cmd = self
+            .config
+            .worktree
+            .verify_command
+            .clone()
+            .unwrap_or_else(|| default_cmd.to_string());
+
+        match wt.run_verification(&verify_cmd) {
+            Ok((passed, output)) => {
+                let badge = if passed { "PASS ✔" } else { "FAIL ✖" };
+                self.diff_modal_content = Some((
+                    format!("Verify [{}]: {} ({})", badge, agent_name, verify_cmd),
+                    output,
+                ));
+                self.diff_modal_scroll = 0;
+                self.show_diff_modal = true;
+                self.status_message = Some((
+                    format!("Worktree verification [{}] for '{}' (`{}`)", badge, agent_name, verify_cmd),
+                    std::time::Instant::now(),
+                ));
+            }
+            Err(e) => {
+                self.status_message = Some((
+                    format!("Verification failed to run `{}`: {}", verify_cmd, e),
+                    std::time::Instant::now(),
+                ));
+            }
+        }
+    }
+
+    /// Scans the active terminal's screen buffer for `file:line[:col]` compiler diagnostics and opens the location in the Editor.
+    pub fn jump_to_terminal_diagnostic(&mut self) -> bool {
+        let mut screen_lines = Vec::new();
+        if let Some(session) = self.terminals.get(self.active_terminal_idx) {
+            if let Ok(parser) = session.parser.lock() {
+                let screen = parser.screen();
+                let (rows, cols) = screen.size();
+                for r in 0..rows {
+                    let mut row_text = String::new();
+                    for c in 0..cols {
+                        if let Some(cell) = screen.cell(r, c) {
+                            if !cell.is_wide_continuation() {
+                                let contents = cell.contents();
+                                row_text.push_str(if contents.is_empty() { " " } else { &contents });
+                            }
+                        }
+                    }
+                    let trimmed = row_text.trim();
+                    if !trimmed.is_empty() {
+                        screen_lines.push(trimmed.to_string());
+                    }
+                }
+            }
+        }
+
+        for line in screen_lines.iter().rev() {
+            if let Some((path, line_num, col_num)) = Self::parse_diagnostic_location(line, &self.workspace_dir) {
+                self.open_file(&path, true);
+                let target_row = line_num.saturating_sub(1);
+                let target_col = col_num.saturating_sub(1);
+                if let Some((_, lines)) = &self.preview_content {
+                    let clamped_row = target_row.min(lines.len().saturating_sub(1));
+                    let max_col = lines.get(clamped_row).map(|l| l.chars().count()).unwrap_or(0);
+                    self.editor_cursor = (clamped_row, target_col.min(max_col));
+                    self.preview_scroll = clamped_row.saturating_sub(5);
+                }
+                self.sync_active_tab_from_state();
+                self.active_pane = ActivePane::FilePreview;
+                self.explorer.reveal_path(&path);
+                self.status_message = Some((
+                    format!(
+                        "Jumped to {}:{}:{}",
+                        path.file_name().unwrap_or_default().to_string_lossy(),
+                        line_num,
+                        col_num
+                    ),
+                    std::time::Instant::now(),
+                ));
+                return true;
+            }
+        }
+
+        self.status_message = Some((
+            "No file:line:col diagnostic found in terminal viewport".to_string(),
+            std::time::Instant::now(),
+        ));
+        false
+    }
+
+    /// Parses a `path/to/file.ext:line[:col]` diagnostic location from a terminal output line.
+    pub fn parse_diagnostic_location(line: &str, workspace_dir: &std::path::Path) -> Option<(PathBuf, usize, usize)> {
+        for raw_token in line.split_whitespace() {
+            let token = raw_token
+                .trim_start_matches(['(', '[', '"', '\'', '>'])
+                .trim_end_matches([')', ']', '"', '\'', ',', ';']);
+            if token.is_empty() || token.starts_with("http://") || token.starts_with("https://") {
+                continue;
+            }
+
+            let parts: Vec<&str> = token.split(':').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+
+            // Handle Windows drive letter prefix e.g. C:\path\file.rs:10:5
+            let (file_part, line_str, col_str) = if parts[0].len() == 1
+                && parts[0].chars().all(|c| c.is_ascii_alphabetic())
+                && parts.len() >= 3
+            {
+                let combined_path = format!("{}:{}", parts[0], parts[1]);
+                let l = parts[2];
+                let c = parts.get(3).copied().unwrap_or("1");
+                (combined_path, l, c)
+            } else {
+                let combined_path = parts[0].to_string();
+                let l = parts[1];
+                let c = parts.get(2).copied().unwrap_or("1");
+                (combined_path, l, c)
+            };
+
+            let Ok(line_num) = line_str.parse::<usize>() else {
+                continue;
+            };
+            if line_num == 0 {
+                continue;
+            }
+            let col_num = col_str.parse::<usize>().unwrap_or(1).max(1);
+
+            let candidate = PathBuf::from(&file_part);
+            if candidate.is_file() {
+                return Some((candidate, line_num, col_num));
+            }
+            let joined = workspace_dir.join(&file_part);
+            if joined.is_file() {
+                return Some((joined, line_num, col_num));
+            }
+        }
+        None
     }
 
     pub fn merge_active_agent(&mut self) -> anyhow::Result<()> {
@@ -3260,6 +2466,13 @@ impl App {
                         let clicked_col = (x as usize).saturating_sub(inner_x as usize);
                         if let Some((_, lines)) = &self.preview_content {
                             if clicked_line < lines.len() {
+                                if mouse.modifiers.contains(KeyModifiers::SHIFT) {
+                                    if self.editor_selection_anchor.is_none() {
+                                        self.editor_selection_anchor = Some(self.editor_cursor);
+                                    }
+                                } else {
+                                    self.editor_selection_anchor = None;
+                                }
                                 self.editor_cursor.0 = clicked_line;
                                 self.editor_cursor.1 = clicked_col.min(lines[clicked_line].chars().count());
                             }
@@ -3381,10 +2594,41 @@ impl App {
                             }
                         }
                     }
+                } else if self.preview_area.contains(ratatui::layout::Position { x, y }) {
+                    let inner_y = self.preview_area.y + if self.show_find_in_file { 3 } else { 2 };
+                    let inner_x = self.preview_area.x + 7;
+                    if y >= inner_y {
+                        let dragged_line = self.preview_scroll + (y - inner_y) as usize;
+                        let dragged_col = (x as usize).saturating_sub(inner_x as usize);
+                        if let Some((_, lines)) = &self.preview_content {
+                            if dragged_line < lines.len() {
+                                if self.editor_selection_anchor.is_none() {
+                                    self.editor_selection_anchor = Some(self.editor_cursor);
+                                }
+                                self.editor_cursor.0 = dragged_line;
+                                self.editor_cursor.1 = dragged_col.min(lines[dragged_line].chars().count());
+                            }
+                        }
+                    }
+                }
+            }
+            crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Right) => {
+                if self.preview_area.contains(ratatui::layout::Position { x, y }) {
+                    self.active_pane = ActivePane::FilePreview;
+                    if self.editor_has_selection() {
+                        self.editor_copy();
+                    } else {
+                        self.editor_paste();
+                    }
                 }
             }
             crossterm::event::MouseEventKind::Up(_) => {
                 self.active_splitter_drag = None;
+                if let Some(anchor) = self.editor_selection_anchor {
+                    if anchor == self.editor_cursor {
+                        self.editor_selection_anchor = None;
+                    }
+                }
             }
             crossterm::event::MouseEventKind::ScrollDown => {
                 if self.preview_tabs_area.contains(ratatui::layout::Position { x, y }) {
@@ -3551,38 +2795,46 @@ impl App {
 
         if self.show_agent_launch_modal {
             match key.code {
-                KeyCode::Esc => self.show_agent_launch_modal = false,
-                KeyCode::Up | KeyCode::Char('k') => {
+                KeyCode::Esc => {
+                    self.show_agent_launch_modal = false;
+                }
+                KeyCode::Up => {
                     self.agent_launch_selected_idx = self.agent_launch_selected_idx.saturating_sub(1);
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
-                    if self.agent_launch_selected_idx < 2 {
-                        self.agent_launch_selected_idx += 1;
-                    }
+                KeyCode::Down | KeyCode::Tab => {
+                    self.agent_launch_selected_idx = (self.agent_launch_selected_idx + 1) % 3;
                 }
-                KeyCode::Char('1') => {
-                    self.agent_launch_selected_idx = 0;
+                KeyCode::BackTab => {
+                    self.agent_launch_selected_idx = (self.agent_launch_selected_idx + 2) % 3;
                 }
-                KeyCode::Char('2') => {
-                    self.agent_launch_selected_idx = 1;
+                KeyCode::Backspace => {
+                    self.agent_launch_task_input.pop();
                 }
-                KeyCode::Char('3') => {
-                    self.agent_launch_selected_idx = 2;
+                KeyCode::Char(c) if self.agent_launch_task_input.is_empty() && matches!(c, '1' | '2' | '3') && !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.agent_launch_selected_idx = (c as usize) - ('1' as usize);
+                }
+                KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) && !key.modifiers.contains(KeyModifiers::ALT) => {
+                    self.agent_launch_task_input.push(c);
                 }
                 KeyCode::Enter => {
+                    let custom_task = self.agent_launch_task_input.trim().to_string();
                     match self.agent_launch_selected_idx {
                         0 => {
-                            let _ = self.launch_agent("Antigravity", "agy", &[], "Interactive Coding Agent");
+                            let task = if custom_task.is_empty() { "Interactive Coding Agent" } else { &custom_task };
+                            let _ = self.launch_agent("Antigravity", "agy", &[], task);
                         }
                         1 => {
-                            let _ = self.launch_agent("Claude Code", "claude", &[], "Autonomous Agent Session");
+                            let task = if custom_task.is_empty() { "Autonomous Agent Session" } else { &custom_task };
+                            let _ = self.launch_agent("Claude Code", "claude", &[], task);
                         }
                         2 => {
                             let shell = if cfg!(windows) { "powershell.exe" } else { "bash" };
-                            let _ = self.launch_agent("Worktree Shell", shell, &[], "Isolated Worktree Shell");
+                            let task = if custom_task.is_empty() { "Isolated Worktree Shell" } else { &custom_task };
+                            let _ = self.launch_agent("Worktree Shell", shell, &[], task);
                         }
                         _ => {}
                     }
+                    self.agent_launch_task_input.clear();
                     self.show_agent_launch_modal = false;
                 }
                 _ => {}
@@ -4049,7 +3301,7 @@ impl App {
                 return;
             }
 
-            if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('a') {
+            if self.active_pane != ActivePane::FilePreview && key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::Char('a') || key.code == KeyCode::Char('A')) {
                 self.show_agent_launch_modal = true;
                 return;
             }
@@ -4205,6 +3457,27 @@ impl App {
                     }
                 }
 
+                // Copy: Ctrl+c
+                if key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::Char('c') || key.code == KeyCode::Char('C')) {
+                    self.editor_copy();
+                    return;
+                }
+                // Paste: Ctrl+v
+                if key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::Char('v') || key.code == KeyCode::Char('V')) {
+                    self.editor_paste();
+                    return;
+                }
+                // Cut: Ctrl+x
+                if key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::Char('x') || key.code == KeyCode::Char('X')) {
+                    self.editor_cut();
+                    return;
+                }
+                // Select All: Ctrl+a
+                if key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::Char('a') || key.code == KeyCode::Char('A')) {
+                    self.editor_select_all();
+                    return;
+                }
+
                 // Undo: Ctrl+z
                 if key.modifiers.contains(KeyModifiers::CONTROL) && !key.modifiers.contains(KeyModifiers::SHIFT) && key.code == KeyCode::Char('z') {
                     self.editor_undo();
@@ -4269,15 +3542,27 @@ impl App {
                     }
                     return;
                 }
-                // Esc returns to Explorer pane
+                // Esc clears selection or returns to Explorer pane
                 if key.code == KeyCode::Esc {
-                    self.active_pane = ActivePane::Explorer;
+                    if self.editor_has_selection() {
+                        self.editor_clear_selection();
+                    } else {
+                        self.active_pane = ActivePane::Explorer;
+                    }
                     return;
                 }
 
                 // Direct Editing & Navigation
+                let is_shift = key.modifiers.contains(KeyModifiers::SHIFT);
                 match key.code {
                     KeyCode::Up => {
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         if self.editor_cursor.0 > 0 {
                             self.editor_cursor.0 -= 1;
                             if let Some((_, lines)) = &self.preview_content {
@@ -4291,6 +3576,13 @@ impl App {
                         }
                     }
                     KeyCode::Down => {
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         if let Some((_, lines)) = &self.preview_content {
                             if self.editor_cursor.0 + 1 < lines.len() {
                                 self.editor_cursor.0 += 1;
@@ -4305,6 +3597,20 @@ impl App {
                         }
                     }
                     KeyCode::Left => {
+                        if !is_shift && self.editor_has_selection() {
+                            if let Some(((s_row, s_col), _)) = self.editor_selection_bounds() {
+                                self.editor_cursor = (s_row, s_col);
+                                self.editor_selection_anchor = None;
+                                return;
+                            }
+                        }
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         if self.editor_cursor.1 > 0 {
                             self.editor_cursor.1 -= 1;
                         } else if self.editor_cursor.0 > 0 {
@@ -4317,6 +3623,20 @@ impl App {
                         }
                     }
                     KeyCode::Right => {
+                        if !is_shift && self.editor_has_selection() {
+                            if let Some((_, (e_row, e_col))) = self.editor_selection_bounds() {
+                                self.editor_cursor = (e_row, e_col);
+                                self.editor_selection_anchor = None;
+                                return;
+                            }
+                        }
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         if let Some((_, lines)) = &self.preview_content {
                             if let Some(line) = lines.get(self.editor_cursor.0) {
                                 if self.editor_cursor.1 < line.chars().count() {
@@ -4329,6 +3649,13 @@ impl App {
                         }
                     }
                     KeyCode::Home => {
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         if let Some((_, lines)) = &self.preview_content {
                             if let Some(line) = lines.get(self.editor_cursor.0) {
                                 let first_non_ws = line.chars().take_while(|c| c.is_whitespace()).count();
@@ -4345,6 +3672,13 @@ impl App {
                         }
                     }
                     KeyCode::End => {
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         if let Some((_, lines)) = &self.preview_content {
                             if let Some(line) = lines.get(self.editor_cursor.0) {
                                 self.editor_cursor.1 = line.chars().count();
@@ -4352,11 +3686,25 @@ impl App {
                         }
                     }
                     KeyCode::PageUp => {
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         let step = 15;
                         self.editor_cursor.0 = self.editor_cursor.0.saturating_sub(step);
                         self.preview_scroll = self.preview_scroll.saturating_sub(step);
                     }
                     KeyCode::PageDown => {
+                        if is_shift {
+                            if self.editor_selection_anchor.is_none() {
+                                self.editor_selection_anchor = Some(self.editor_cursor);
+                            }
+                        } else {
+                            self.editor_selection_anchor = None;
+                        }
                         let step = 15;
                         if let Some((_, lines)) = &self.preview_content {
                             let max_line = lines.len().saturating_sub(1);
@@ -4364,8 +3712,20 @@ impl App {
                             self.preview_scroll = (self.preview_scroll + step).min(max_line);
                         }
                     }
+                    KeyCode::BackTab => {
+                        self.editor_outdent();
+                        return;
+                    }
                     KeyCode::Tab => {
-                        self.push_editor_undo_snapshot();
+                        if is_shift {
+                            self.editor_outdent();
+                            return;
+                        }
+                        if self.editor_has_selection() {
+                            self.editor_delete_selection();
+                        } else {
+                            self.push_editor_undo_snapshot();
+                        }
                         if let Some((_, lines)) = &mut self.preview_content {
                             if lines.is_empty() {
                                 lines.push(String::new());
@@ -4380,28 +3740,14 @@ impl App {
                         }
                     }
                     KeyCode::Enter => {
-                        self.push_editor_undo_snapshot();
-                        if let Some((_, lines)) = &mut self.preview_content {
-                            if lines.is_empty() {
-                                lines.push(String::new());
-                            }
-                            let (row, col) = self.editor_cursor;
-                            if let Some(line) = lines.get_mut(row) {
-                                let byte_idx = line.char_indices().nth(col).map(|(i, _)| i).unwrap_or(line.len());
-                                let rest = line.split_off(byte_idx);
-                                lines.insert(row + 1, rest);
-                                self.editor_cursor.0 += 1;
-                                self.editor_cursor.1 = 0;
-                                self.editor_dirty = true;
-
-                                let view_height = self.preview_area.height.saturating_sub(3) as usize;
-                                if self.editor_cursor.0 >= self.preview_scroll + view_height.max(1) {
-                                    self.preview_scroll += 1;
-                                }
-                            }
-                        }
+                        self.editor_newline_with_auto_indent();
+                        return;
                     }
                     KeyCode::Backspace => {
+                        if self.editor_has_selection() {
+                            self.editor_delete_selection();
+                            return;
+                        }
                         self.push_editor_undo_snapshot();
                         if let Some((_, lines)) = &mut self.preview_content {
                             let (row, col) = self.editor_cursor;
@@ -4426,6 +3772,10 @@ impl App {
                         }
                     }
                     KeyCode::Delete => {
+                        if self.editor_has_selection() {
+                            self.editor_delete_selection();
+                            return;
+                        }
                         self.push_editor_undo_snapshot();
                         if let Some((_, lines)) = &mut self.preview_content {
                             let (row, col) = self.editor_cursor;
@@ -4444,7 +3794,11 @@ impl App {
                         }
                     }
                     KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) && !key.modifiers.contains(KeyModifiers::ALT) => {
-                        self.push_editor_undo_snapshot();
+                        if self.editor_has_selection() {
+                            self.editor_delete_selection();
+                        } else {
+                            self.push_editor_undo_snapshot();
+                        }
                         if let Some((_, lines)) = &mut self.preview_content {
                             if lines.is_empty() {
                                 lines.push(String::new());
@@ -4465,9 +3819,25 @@ impl App {
                 }
             },
             ActivePane::Terminal => {
+                // Paste in terminal with Ctrl+Shift+V
+                if key.modifiers.contains(KeyModifiers::CONTROL) && key.modifiers.contains(KeyModifiers::SHIFT) && (key.code == KeyCode::Char('V') || key.code == KeyCode::Char('v')) {
+                    if let Some(text) = self.get_clipboard_text() {
+                        if let Some(session) = self.terminals.get(self.active_terminal_idx) {
+                            let _ = session.write_bytes(text.as_bytes());
+                        }
+                    }
+                    return;
+                }
+
                 // Escape chord: Ctrl+b returns focus to TIDE Explorer pane
                 if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('b') {
                     self.active_pane = ActivePane::Explorer;
+                    return;
+                }
+
+                // Jump to compiler diagnostic in terminal output: Ctrl+g
+                if key.modifiers.contains(KeyModifiers::CONTROL) && (key.code == KeyCode::Char('g') || key.code == KeyCode::Char('G')) {
+                    let _ = self.jump_to_terminal_diagnostic();
                     return;
                 }
 
@@ -4620,6 +3990,9 @@ impl App {
                 }
                 KeyCode::Char('d') => {
                     self.inspect_agent_diff();
+                }
+                KeyCode::Char('v') | KeyCode::Char('V') => {
+                    self.verify_active_agent();
                 }
                 KeyCode::Char('m') => {
                     let _ = self.merge_active_agent();
@@ -5857,5 +5230,238 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
+
+    #[test]
+    fn test_editor_copy_cut_paste_line() {
+        let temp_dir = std::env::temp_dir().join("tide_test_copy_cut_line");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+        let test_file = temp_dir.join("test.txt");
+        std::fs::write(&test_file, "first line\nsecond line").expect("write test file");
+
+        let mut app = App::new(temp_dir.clone()).expect("App::new");
+        app.open_file(&test_file, true);
+        app.active_pane = ActivePane::FilePreview;
+
+        // 1. Copy current line (no selection)
+        app.editor_cursor = (0, 3);
+        app.editor_copy();
+        assert_eq!(app.internal_clipboard, "first line\r\n");
+
+        // 2. Paste at line 1
+        app.editor_cursor = (1, 0);
+        app.editor_paste();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines.len(), 3);
+            assert_eq!(lines[0], "first line");
+            assert_eq!(lines[1], "first line");
+            assert_eq!(lines[2], "second line");
+        }
+
+        // 3. Cut line 0
+        app.editor_cursor = (0, 0);
+        app.editor_cut();
+        assert_eq!(app.internal_clipboard, "first line\r\n");
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines.len(), 2);
+            assert_eq!(lines[0], "first line");
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_editor_selection_and_copy_cut_paste() {
+        let temp_dir = std::env::temp_dir().join("tide_test_selection");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+        let test_file = temp_dir.join("sample.txt");
+        std::fs::write(&test_file, "hello beautiful world\nsecond line here").expect("write test file");
+
+        let mut app = App::new(temp_dir.clone()).expect("App::new");
+        app.open_file(&test_file, true);
+        app.active_pane = ActivePane::FilePreview;
+
+        // 1. Select "beautiful" (indices 6..15)
+        app.editor_selection_anchor = Some((0, 6));
+        app.editor_cursor = (0, 15);
+        assert!(app.editor_has_selection());
+        assert_eq!(app.editor_selected_text(), Some("beautiful".to_string()));
+
+        // 2. Copy selection
+        app.editor_copy();
+        assert_eq!(app.internal_clipboard, "beautiful");
+
+        // 3. Cut selection
+        app.editor_cut();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines[0], "hello  world");
+        }
+        assert_eq!(app.editor_cursor, (0, 6));
+        assert!(!app.editor_has_selection());
+
+        // 4. Paste back
+        app.editor_paste();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines[0], "hello beautiful world");
+        }
+
+        // 5. Select All
+        app.editor_select_all();
+        assert!(app.editor_has_selection());
+        let all_text = app.editor_selected_text().unwrap();
+        assert!(all_text.contains("hello beautiful world"));
+        assert!(all_text.contains("second line here"));
+
+        // 6. Delete selection with backspace
+        app.editor_delete_selection();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines.len(), 1);
+            assert_eq!(lines[0], "");
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_editor_multiline_paste_and_undo() {
+        let temp_dir = std::env::temp_dir().join("tide_test_multiline_paste");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+        let test_file = temp_dir.join("code.rs");
+        std::fs::write(&test_file, "fn start() {\n}").expect("write test file");
+
+        let mut app = App::new(temp_dir.clone()).expect("App::new");
+        app.open_file(&test_file, true);
+        app.active_pane = ActivePane::FilePreview;
+
+        // Paste multiline snippet inside function
+        app.editor_cursor = (0, 12); // between { and \n
+        app.editor_paste_text("\n    let x = 10;\n    let y = 20;");
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines.len(), 4);
+            assert_eq!(lines[0], "fn start() {");
+            assert_eq!(lines[1], "    let x = 10;");
+            assert_eq!(lines[2], "    let y = 20;");
+            assert_eq!(lines[3], "}");
+        }
+
+        // Undo in a single action
+        app.editor_undo();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines.len(), 2);
+            assert_eq!(lines[0], "fn start() {");
+            assert_eq!(lines[1], "}");
+        }
+
+        // Redo restores multiline paste
+        app.editor_redo();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines.len(), 4);
+            assert_eq!(lines[1], "    let x = 10;");
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_editor_auto_indent_and_outdent() {
+        let temp_dir = std::env::temp_dir().join("tide_test_auto_indent");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+        let test_file = temp_dir.join("indent.rs");
+        std::fs::write(&test_file, "fn demo() {}").expect("write test file");
+
+        let mut app = App::new(temp_dir.clone()).expect("App::new");
+        app.open_file(&test_file, true);
+        app.active_pane = ActivePane::FilePreview;
+
+        // Place cursor right between '{' and '}' (col 11) and press Enter
+        app.editor_cursor = (0, 11);
+        app.editor_newline_with_auto_indent();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines.len(), 3);
+            assert_eq!(lines[0], "fn demo() {");
+            assert_eq!(lines[1], "    ");
+            assert_eq!(lines[2], "}");
+        }
+        assert_eq!(app.editor_cursor, (1, 4));
+
+        // Outdent on line 1 removes 4 leading spaces
+        app.editor_outdent();
+        if let Some((_, lines)) = &app.preview_content {
+            assert_eq!(lines[1], "");
+        }
+        assert_eq!(app.editor_cursor, (1, 0));
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_editor_matching_bracket() {
+        let temp_dir = std::env::temp_dir().join("tide_test_brackets");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+        let test_file = temp_dir.join("brackets.rs");
+        std::fs::write(&test_file, "fn main() {\n    let v = vec![1, (2 + 3)];\n}").expect("write test file");
+
+        let mut app = App::new(temp_dir.clone()).expect("App::new");
+        app.open_file(&test_file, true);
+
+        // Cursor on '{' at (0, 10) matches '}' at (2, 0)
+        app.editor_cursor = (0, 10);
+        assert_eq!(app.editor_matching_bracket_pos(), Some(((0, 10), (2, 0))));
+
+        // Cursor on '}' at (2, 0) matches '{' at (0, 10)
+        app.editor_cursor = (2, 0);
+        assert_eq!(app.editor_matching_bracket_pos(), Some(((2, 0), (0, 10))));
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_terminal_diagnostic_parser_and_jump() {
+        let temp_dir = std::env::temp_dir().join("tide_test_diag_jump");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let src_dir = temp_dir.join("src");
+        std::fs::create_dir_all(&src_dir).expect("create src dir");
+        let lib_file = src_dir.join("lib.rs");
+        std::fs::write(&lib_file, "line 1\nline 2\nline 3\n    broken_call();\nline 5").expect("write lib.rs");
+
+        let parsed = App::parse_diagnostic_location("  --> src/lib.rs:4:5", &temp_dir);
+        assert!(parsed.is_some());
+        let (path, line, col) = parsed.unwrap();
+        assert_eq!(path, lib_file);
+        assert_eq!(line, 4);
+        assert_eq!(col, 5);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_agent_task_brief_and_worktree_verify() {
+        let temp_dir = std::env::temp_dir().join("tide_test_wt_verify");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+
+        let wt = crate::worktree::WorktreeInfo {
+            id: "agy-1".to_string(),
+            branch: "tide/agy-1".to_string(),
+            path: temp_dir.clone(),
+            base_branch: "main".to_string(),
+        };
+
+        wt.write_task_brief("Antigravity", "Implement OAuth2 PKCE flow").expect("write task brief");
+        let task_md = std::fs::read_to_string(temp_dir.join(".tide").join("TASK.md")).expect("read TASK.md");
+        assert!(task_md.contains("Implement OAuth2 PKCE flow"));
+        assert!(task_md.contains("tide/agy-1"));
+
+        let (passed, output) = wt.run_verification("echo VERIFY_OK").expect("run verification");
+        assert!(passed);
+        assert!(output.contains("VERIFY_OK"));
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
 }
+
 

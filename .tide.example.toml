@@ -13,6 +13,10 @@ theme = "TideOcean"
 # Initial terminal scaling / font zoom offset (-5 to +5):
 # font_zoom = 0
 
+[worktree]
+# Optional pre-merge verification command executed in agent worktrees when pressing `v`:
+# verify_command = "cargo check"
+
 [worktree.bootstrap]
 # Untracked files to automatically copy from root workspace into newly created agent worktrees:
 copy_files = [".env", ".env.local"]

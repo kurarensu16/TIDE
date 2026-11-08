@@ -24,6 +24,8 @@ pub type RawHandle = usize;
 pub struct JobObject {
     #[cfg(windows)]
     handle: HANDLE,
+    #[cfg(not(windows))]
+    pid: std::sync::atomic::AtomicU32,
 }
 
 // Safety: Windows Job Object handles can be safely moved across threads.
@@ -61,7 +63,9 @@ impl JobObject {
         }
         #[cfg(not(windows))]
         {
-            Ok(Self {})
+            Ok(Self {
+                pid: std::sync::atomic::AtomicU32::new(0),
+            })
         }
     }
 
@@ -77,6 +81,7 @@ impl JobObject {
         }
         #[cfg(not(windows))]
         {
+            self.pid.store(_process_handle as u32, std::sync::atomic::Ordering::SeqCst);
             Ok(())
         }
     }
@@ -93,6 +98,21 @@ impl JobObject {
         }
         #[cfg(not(windows))]
         {
+            let pid = self.pid.swap(0, std::sync::atomic::Ordering::SeqCst);
+            if pid > 0 {
+                let pid_str = pid.to_string();
+                let pgrp_str = format!("-{}", pid);
+                // Kill child processes and process group on Unix (Linux / macOS)
+                let _ = std::process::Command::new("pkill")
+                    .args(["-TERM", "-P", &pid_str])
+                    .output();
+                let _ = std::process::Command::new("kill")
+                    .args(["-TERM", &pgrp_str, &pid_str])
+                    .output();
+                let _ = std::process::Command::new("kill")
+                    .args(["-KILL", &pid_str])
+                    .output();
+            }
             true
         }
     }
@@ -107,6 +127,10 @@ impl Drop for JobObject {
                     CloseHandle(self.handle);
                 }
             }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = self.terminate();
         }
     }
 }

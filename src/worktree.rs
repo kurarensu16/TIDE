@@ -173,6 +173,55 @@ impl WorktreeInfo {
         Ok(())
     }
 
+    /// Writes a `.tide/TASK.md` task brief inside the isolated worktree for the agent session.
+    pub fn write_task_brief(&self, agent_name: &str, task: &str) -> anyhow::Result<()> {
+        let tide_dir = self.path.join(".tide");
+        fs::create_dir_all(&tide_dir)?;
+        let content = format!(
+            "# TIDE Agent Task Brief\n\n- **Session ID**: `{}`\n- **Agent**: {}\n- **Branch**: `{}`\n- **Base Branch**: `{}`\n\n## Task Description\n\n{}\n",
+            self.id,
+            agent_name,
+            self.branch,
+            self.base_branch,
+            task.trim()
+        );
+        fs::write(tide_dir.join("TASK.md"), content)?;
+        Ok(())
+    }
+
+    /// Executes a verification command (e.g., `cargo check` or `npm test`) inside the worktree.
+    pub fn run_verification(&self, verify_cmd: &str) -> anyhow::Result<(bool, String)> {
+        let output = if cfg!(windows) {
+            Command::new("cmd")
+                .args(["/c", verify_cmd])
+                .current_dir(&self.path)
+                .output()?
+        } else {
+            Command::new("sh")
+                .args(["-c", verify_cmd])
+                .current_dir(&self.path)
+                .output()?
+        };
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let mut combined = String::new();
+        if !stdout.trim().is_empty() {
+            combined.push_str(stdout.trim());
+        }
+        if !stderr.trim().is_empty() {
+            if !combined.is_empty() {
+                combined.push_str("\n\n");
+            }
+            combined.push_str(stderr.trim());
+        }
+        if combined.is_empty() {
+            combined = format!("Command `{}` exited with status: {}", verify_cmd, output.status);
+        }
+
+        Ok((output.status.success(), combined))
+    }
+
     /// Tears down and deletes the worktree and temporary branch.
     pub fn cleanup(&self, repo_root: &Path) -> anyhow::Result<()> {
         let _ = Command::new("git")

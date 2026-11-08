@@ -1,5 +1,6 @@
 ---
 // Footer.astro
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <footer class="border-t border-tide-border bg-tide-surface text-xs font-mono text-tide-text-secondary">
@@ -9,7 +10,7 @@
       <div class="space-y-3">
         <div class="flex items-center gap-2">
           <div class="w-6 h-6 rounded border border-tide-border flex items-center justify-center bg-tide-bg p-0.5">
-            <img src="/logo.svg" alt="TIDE Wave" class="w-full h-full object-contain" />
+            <img src={`${base}/logo.svg`} alt="TIDE Wave" class="w-full h-full object-contain" />
           </div>
           <span class="font-bold text-sm text-tide-text">TIDE</span>
         </div>
@@ -25,13 +26,13 @@
       <div class="space-y-2">
         <div class="text-[11px] font-bold uppercase tracking-wider text-tide-text">Navigation</div>
         <ul class="space-y-1.5 text-[11px] text-tide-muted">
-          <li><a href="/#how-it-works" class="hover:text-tide-accent transition-colors">How it works</a></li>
-          <li><a href="/#the-problem" class="hover:text-tide-accent transition-colors">The Problem</a></li>
-          <li><a href="/#what-you-keep" class="hover:text-tide-accent transition-colors">Benefits</a></li>
-          <li><a href="/#workspace" class="hover:text-tide-accent transition-colors">Live Preview</a></li>
-          <li><a href="/#themes" class="hover:text-tide-accent transition-colors">Themes</a></li>
-          <li><a href="/#compatibility" class="hover:text-tide-accent transition-colors">Compatibility</a></li>
-          <li><a href="/docs" class="text-tide-accent font-bold hover:underline transition-colors">Documentation</a></li>
+          <li><a href={`${base}/#how-it-works`} class="hover:text-tide-accent transition-colors">How it works</a></li>
+          <li><a href={`${base}/#the-problem`} class="hover:text-tide-accent transition-colors">The Problem</a></li>
+          <li><a href={`${base}/#what-you-keep`} class="hover:text-tide-accent transition-colors">Benefits</a></li>
+          <li><a href={`${base}/#workspace`} class="hover:text-tide-accent transition-colors">Live Preview</a></li>
+          <li><a href={`${base}/#themes`} class="hover:text-tide-accent transition-colors">Themes</a></li>
+          <li><a href={`${base}/#compatibility`} class="hover:text-tide-accent transition-colors">Compatibility</a></li>
+          <li><a href={`${base}/docs`} class="text-tide-accent font-bold hover:underline transition-colors">Documentation</a></li>
         </ul>
       </div>
 
@@ -41,7 +42,7 @@
         <ul class="space-y-1.5 text-[11px] text-tide-muted">
           <li><a href="https://github.com/kurarensu16/TIDE" target="_blank" class="hover:text-tide-accent transition-colors">GitHub Repository</a></li>
           <li><a href="https://github.com/kurarensu16/TIDE/issues" target="_blank" class="hover:text-tide-accent transition-colors">Issue Tracker</a></li>
-          <li><a href="/docs" class="hover:text-tide-accent transition-colors">Documentation</a></li>
+          <li><a href={`${base}/docs`} class="hover:text-tide-accent transition-colors">Documentation</a></li>
         </ul>
       </div>
 

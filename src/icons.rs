@@ -255,6 +255,22 @@ pub fn action_icon(action: &str, theme: IconTheme) -> &'static str {
         ("comment", IconTheme::Emoji) => "💬 ",
         ("comment", IconTheme::Unicode) => "// ",
 
+        ("copy", IconTheme::NerdFont) => "󰆏 ",
+        ("copy", IconTheme::Emoji) => "📋 ",
+        ("copy", IconTheme::Unicode) => "cp ",
+
+        ("cut", IconTheme::NerdFont) => "󰆐 ",
+        ("cut", IconTheme::Emoji) => "✂️ ",
+        ("cut", IconTheme::Unicode) => "xx ",
+
+        ("paste", IconTheme::NerdFont) => "󰆒 ",
+        ("paste", IconTheme::Emoji) => "📥 ",
+        ("paste", IconTheme::Unicode) => "pt ",
+
+        ("select_all", IconTheme::NerdFont) => "󰒆 ",
+        ("select_all", IconTheme::Emoji) => "✨ ",
+        ("select_all", IconTheme::Unicode) => ":: ",
+
         ("push", IconTheme::NerdFont) => "󰛃 ",
         ("push", IconTheme::Emoji) => "🚀 ",
         ("push", IconTheme::Unicode) => ">> ",
