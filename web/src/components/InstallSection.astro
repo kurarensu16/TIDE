@@ -26,6 +26,9 @@
         <button data-tab="shell" class="install-tab-btn px-3 py-1.5 text-tide-text-secondary hover:text-tide-text transition-all">
           Shell (macOS / Linux)
         </button>
+        <button data-tab="npm" class="install-tab-btn px-3 py-1.5 text-tide-text-secondary hover:text-tide-text transition-all">
+          npm / npx
+        </button>
         <button data-tab="packages" class="install-tab-btn px-3 py-1.5 text-tide-text-secondary hover:text-tide-text transition-all">
           Package Managers
         </button>
@@ -70,6 +73,33 @@
           <div class="text-[11px] text-tide-muted flex flex-wrap items-center justify-between gap-2">
             <span>✓ Supports macOS Apple Silicon (ARM64), Intel (x86_64), and Linux x86_64</span>
             <span>Installs to: <code class="text-tide-text">~/.local/bin/tide</code></span>
+          </div>
+        </div>
+
+        <!-- npm / npx Tab -->
+        <div id="tab-npm" class="install-panel hidden space-y-4">
+          <div class="text-tide-text-secondary">
+            Run instantly without installing via <code class="text-tide-text">npx</code> or install globally with <code class="text-tide-text">npm</code>:
+          </div>
+          <div class="space-y-3">
+            <div>
+              <div class="text-[11px] text-tide-muted mb-1 font-bold">Run instantly (zero install):</div>
+              <div class="flex items-center justify-between p-2.5 rounded bg-tide-bg border border-tide-border">
+                <code class="text-tide-accent select-all text-xs">npx tide-cli</code>
+                <button class="copy-cmd-btn ml-2 shrink-0 px-2 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-muted hover:text-tide-text text-[11px]" data-copy="npx tide-cli">Copy</button>
+              </div>
+            </div>
+            <div>
+              <div class="text-[11px] text-tide-muted mb-1 font-bold">Install globally:</div>
+              <div class="flex items-center justify-between p-2.5 rounded bg-tide-bg border border-tide-border">
+                <code class="text-tide-accent select-all text-xs">npm install -g tide-cli</code>
+                <button class="copy-cmd-btn ml-2 shrink-0 px-2 py-0.5 rounded bg-tide-variant border border-tide-border text-tide-muted hover:text-tide-text text-[11px]" data-copy="npm install -g tide-cli">Copy</button>
+              </div>
+            </div>
+          </div>
+          <div class="text-[11px] text-tide-muted flex flex-wrap items-center justify-between gap-2">
+            <span>✓ Cross-platform: Windows, macOS, and Linux</span>
+            <span>Package: <code class="text-tide-text">tide-cli</code></span>
           </div>
         </div>
 

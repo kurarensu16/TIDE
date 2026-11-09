@@ -91,7 +91,21 @@ curl -fsSL https://raw.githubusercontent.com/kurarensu16/TIDE/main/scripts/insta
 
 ---
 
-#### 📦 Option 2: Windows Package Managers
+#### 🟢 Option 2: npm / npx (Zero Setup — Cross-Platform)
+
+Run instantly without installing:
+```bash
+npx tide-cli
+```
+
+Or install globally across Windows, macOS, and Linux:
+```bash
+npm install -g tide-cli
+```
+
+---
+
+#### 📦 Option 3: Windows Package Managers
 
 **Scoop:**
 ```powershell
@@ -105,7 +119,7 @@ winget install kurarensu16.tide
 
 ---
 
-#### 🦀 Option 3: Rust Ecosystem (For Rust Developers)
+#### 🦀 Option 4: Rust Ecosystem (For Rust Developers)
 
 ```bash
 # Instant download via cargo-binstall (no compilation delay)
@@ -117,7 +131,7 @@ cargo install --git https://github.com/kurarensu16/TIDE.git
 
 ---
 
-#### 💾 Option 4: Pre-built Binaries (Direct Download)
+#### 💾 Option 5: Pre-built Binaries (Direct Download)
 
 Download standalone portable executables directly from [GitHub Releases](https://github.com/kurarensu16/TIDE/releases/latest):
 * **Windows x86_64**: `tide-v*-windows-x86_64.zip` (standalone `tide.exe` with application icon)

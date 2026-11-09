@@ -1,0 +1,41 @@
+{
+  "name": "tide-cli",
+  "version": "0.1.0",
+  "description": "Terminal Integrated Development Environment for parallel AI coding agents",
+  "main": "bin/tide.js",
+  "bin": {
+    "tide": "bin/tide.js",
+    "tide-cli": "bin/tide.js"
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kurarensu16/TIDE.git"
+  },
+  "homepage": "https://kurarensu16.github.io/TIDE/",
+  "bugs": {
+    "url": "https://github.com/kurarensu16/TIDE/issues"
+  },
+  "keywords": [
+    "tide",
+    "terminal",
+    "ide",
+    "developer-tools",
+    "tui",
+    "ai-agents",
+    "worktree",
+    "claude-code",
+    "antigravity",
+    "cli"
+  ],
+  "author": "kurarensu16",
+  "license": "MIT OR Apache-2.0"
+}
+

@@ -202,9 +202,29 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
               </div>
             </div>
 
-            <!-- Channel 2: Package Managers -->
+            <!-- Channel 2: npm / npx -->
             <div class="space-y-3 pt-3">
-              <h3 class="text-base font-bold text-tide-text font-mono">2. Package Managers</h3>
+              <h3 class="text-base font-bold text-tide-text font-mono">2. npm / npx (Node.js)</h3>
+              <p class="text-xs">Run instantly with npx or install globally across any platform with npm:</p>
+              
+              <div class="space-y-2">
+                <div class="text-[11px] text-tide-muted font-mono">Run instantly:</div>
+                <div class="p-2.5 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
+                  <code class="text-tide-accent select-all">npx tide-cli</code>
+                  <button class="copy-doc-btn ml-2 shrink-0 px-2 py-0.5 rounded bg-tide-variant text-[11px] text-tide-muted hover:text-tide-text" data-copy="npx tide-cli">Copy</button>
+                </div>
+
+                <div class="text-[11px] text-tide-muted font-mono">Install globally:</div>
+                <div class="p-2.5 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
+                  <code class="text-tide-accent select-all">npm install -g tide-cli</code>
+                  <button class="copy-doc-btn ml-2 shrink-0 px-2 py-0.5 rounded bg-tide-variant text-[11px] text-tide-muted hover:text-tide-text" data-copy="npm install -g tide-cli">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Channel 3: Package Managers -->
+            <div class="space-y-3 pt-3">
+              <h3 class="text-base font-bold text-tide-text font-mono">3. Package Managers</h3>
               <div class="space-y-2">
                 <div class="text-[11px] text-tide-muted font-mono">Scoop (Windows):</div>
                 <div class="p-2.5 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
@@ -220,9 +240,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
               </div>
             </div>
 
-            <!-- Channel 3: Cargo & Source -->
+            <!-- Channel 4: Cargo & Source -->
             <div class="space-y-2 pt-3">
-              <h3 class="text-base font-bold text-tide-text font-mono">3. Cargo & Source (Rust Toolchain)</h3>
+              <h3 class="text-base font-bold text-tide-text font-mono">4. Cargo & Source (Rust Toolchain)</h3>
               <p class="text-xs">For Rust developers who prefer building locally or managing tools via Cargo:</p>
               <div class="p-3 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
                 <code class="text-tide-accent">cargo install --git https://github.com/kurarensu16/TIDE</code>
@@ -230,9 +250,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
               </div>
             </div>
 
-            <!-- Channel 4: Prebuilt Binaries -->
+            <!-- Channel 5: Prebuilt Binaries -->
             <div class="space-y-2 pt-3">
-              <h3 class="text-base font-bold text-tide-text font-mono">4. Direct Release Binaries</h3>
+              <h3 class="text-base font-bold text-tide-text font-mono">5. Direct Release Binaries</h3>
               <p class="text-xs">Download standalone portable executables directly from GitHub Releases:</p>
               <div class="p-3 rounded bg-tide-surface border border-tide-border font-mono text-xs flex items-center justify-between">
                 <span class="text-tide-text">Windows (.zip), Linux (.tar.gz), macOS ARM64 & x86_64</span>
