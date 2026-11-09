@@ -71,39 +71,90 @@ Detecting autonomous agent states via fragile screen scraping or regex guesswork
 
 ## Quick Start
 
-### Prerequisites
-- **Rust**: Stable toolchain (1.85+ recommended, 2024 Edition)
-- **Git**: Installed and available in your `PATH`
-- **OS**: Windows 11 (fully native ConPTY support), Linux, or macOS
-
 ### Installation
 
-#### Option 1: One-Line Install via Cargo (Recommended)
-Installs the `tide` binary directly into your Cargo path (`~/.cargo/bin/tide.exe`):
+Choose the easiest method for your platform. **No Rust toolchain or compilation required** for the one-line installers!
+
+#### ⚡ Option 1: One-Line Installer (Recommended — Zero Setup)
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/kurarensu16/TIDE/main/scripts/install.ps1 | iex
+```
+*Downloads the pre-compiled binary into `~/.tide/bin` and automatically configures your User `PATH`.*
+
+**macOS & Linux (Bash / Zsh):**
 ```bash
+curl -fsSL https://raw.githubusercontent.com/kurarensu16/TIDE/main/scripts/install.sh | sh
+```
+*Detects system architecture, extracts `tide` into `~/.local/bin`, and verifies your `PATH`.*
+
+---
+
+#### 📦 Option 2: Windows Package Managers
+
+**Scoop:**
+```powershell
+scoop install https://raw.githubusercontent.com/kurarensu16/TIDE/main/packaging/scoop/tide.json
+```
+
+**Winget:**
+```powershell
+winget install kurarensu16.tide
+```
+
+---
+
+#### 🦀 Option 3: Rust Ecosystem (For Rust Developers)
+
+```bash
+# Instant download via cargo-binstall (no compilation delay)
+cargo binstall --git https://github.com/kurarensu16/TIDE.git tide
+
+# Or build from Git source (requires Rust 1.85+)
 cargo install --git https://github.com/kurarensu16/TIDE.git
 ```
-Once installed, you can launch TIDE from anywhere in your terminal:
+
+---
+
+#### 💾 Option 4: Pre-built Binaries (Direct Download)
+
+Download standalone portable executables directly from [GitHub Releases](https://github.com/kurarensu16/TIDE/releases/latest):
+* **Windows x86_64**: `tide-v*-windows-x86_64.zip` (standalone `tide.exe` with application icon)
+* **Linux x86_64**: `tide-v*-linux-x86_64.tar.gz`
+* **macOS Apple Silicon**: `tide-v*-macos-arm64.tar.gz`
+* **macOS Intel**: `tide-v*-macos-x86_64.tar.gz`
+
+---
+
+### Launching TIDE
+
+Once installed, launch TIDE from any terminal:
 ```bash
-# Open current directory
-tide
+# Open current working directory
+tide .
 
 # Or open a specific workspace
 tide "C:\path\to\project"
 ```
 
-#### Option 2: Build from Source
-```bash
-# Clone the repository
-git clone https://github.com/kurarensu16/TIDE.git
-cd TIDE
+---
 
-# Build release binary
-cargo build --release
+### Uninstallation
 
-# Run TIDE binary
-./target/release/tide.exe
+To uninstall TIDE completely from your system:
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/kurarensu16/TIDE/main/scripts/uninstall.ps1 | iex
 ```
+
+**macOS & Linux (Bash / Zsh):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/kurarensu16/TIDE/main/scripts/uninstall.sh | sh
+```
+
+*(Or use your package manager: `scoop uninstall tide`, `winget uninstall kurarensu16.tide`, or `brew uninstall tide`)*
 
 ---
 

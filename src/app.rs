@@ -221,6 +221,7 @@ impl App {
 
         let explorer = FileExplorer::new(&workspace_dir);
         let git_info = GitRepoInfo::fetch(&workspace_dir.to_string_lossy());
+        crate::worktree::ensure_tide_ignored(&workspace_dir);
 
         let mut app = Self {
             workspace_dir: workspace_dir.clone(),
@@ -4232,6 +4233,7 @@ impl App {
 
         self.explorer = FileExplorer::new(&self.workspace_dir);
         self.git_info = GitRepoInfo::fetch(&self.workspace_dir.to_string_lossy());
+        crate::worktree::ensure_tide_ignored(&self.workspace_dir);
         self.editor_tabs.clear();
         self.active_editor_tab_idx = 0;
         self.preview_content = None;

@@ -1,0 +1,21 @@
+{
+  "version": "0.1.0",
+  "description": "Terminal Integrated Development Environment for parallel AI coding agents",
+  "homepage": "https://github.com/kurarensu16/TIDE",
+  "license": "MIT OR Apache-2.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/kurarensu16/TIDE/releases/download/v0.1.0/tide-v0.1.0-windows-x86_64.zip",
+      "bin": "tide.exe"
+    }
+  },
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/kurarensu16/TIDE/releases/download/v$version/tide-v$version-windows-x86_64.zip"
+      }
+    }
+  }
+}
+

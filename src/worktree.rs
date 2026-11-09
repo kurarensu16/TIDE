@@ -21,6 +21,9 @@ impl WorktreeInfo {
         base_branch: &str,
         bootstrap_cfg: Option<&crate::config::WorktreeBootstrapConfig>,
     ) -> anyhow::Result<Self> {
+        // Ensure .tide/ is excluded from Git tracking in the target project
+        ensure_tide_ignored(repo_root);
+
         let worktree_dir = repo_root.join(".tide").join("worktrees").join(session_id);
         let branch = format!("tide/{}", session_id);
 
@@ -237,3 +240,91 @@ impl WorktreeInfo {
         Ok(())
     }
 }
+
+/// Ensures that `.tide/` is excluded from Git tracking in the specified repository root.
+///
+/// 1. Updates `.git/info/exclude` (local ignore file, leaves tracked files untouched).
+/// 2. Updates or creates `.gitignore` so that team members and future clones also ignore `.tide/`.
+pub fn ensure_tide_ignored(repo_root: &Path) {
+    let git_path = repo_root.join(".git");
+    if !git_path.exists() {
+        return;
+    }
+
+    // Helper to check if any variant of .tide is already ignored in file content
+    let is_already_ignored = |content: &str| -> bool {
+        content.lines().any(|l| {
+            let trimmed = l.trim();
+            trimmed == ".tide"
+                || trimmed == ".tide/"
+                || trimmed == "/.tide"
+                || trimmed == "/.tide/"
+                || trimmed == "**/.tide"
+                || trimmed == "**/.tide/"
+        })
+    };
+
+    // 1. Update .git/info/exclude if .git is a directory
+    if git_path.is_dir() {
+        let exclude_path = git_path.join("info").join("exclude");
+        if let Some(parent) = exclude_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let existing = fs::read_to_string(&exclude_path).unwrap_or_default();
+        if !is_already_ignored(&existing) {
+            let mut new_content = existing;
+            if !new_content.is_empty() && !new_content.ends_with('\n') {
+                new_content.push('\n');
+            }
+            new_content.push_str("\n# TIDE agent worktrees and workspace state\n.tide/\n");
+            let _ = fs::write(&exclude_path, new_content);
+        }
+    }
+
+    // 2. Update project .gitignore
+    let gitignore_path = repo_root.join(".gitignore");
+    if gitignore_path.exists() {
+        let existing = fs::read_to_string(&gitignore_path).unwrap_or_default();
+        if !is_already_ignored(&existing) {
+            let mut new_content = existing;
+            if !new_content.is_empty() && !new_content.ends_with('\n') {
+                new_content.push('\n');
+            }
+            new_content.push_str("\n# TIDE workspace and agent worktrees\n.tide/\n");
+            let _ = fs::write(&gitignore_path, new_content);
+        }
+    } else {
+        // Create initial .gitignore with .tide/ entry
+        let content = "# TIDE workspace and agent worktrees\n.tide/\n";
+        let _ = fs::write(&gitignore_path, content);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_ensure_tide_ignored_creates_gitignore_and_exclude() {
+        let temp_dir = std::env::temp_dir().join(format!("tide_test_git_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let git_dir = temp_dir.join(".git");
+        fs::create_dir_all(&git_dir).unwrap();
+
+        ensure_tide_ignored(&temp_dir);
+
+        let gitignore = fs::read_to_string(temp_dir.join(".gitignore")).unwrap();
+        assert!(gitignore.contains(".tide/"));
+
+        let exclude = fs::read_to_string(git_dir.join("info").join("exclude")).unwrap();
+        assert!(exclude.contains(".tide/"));
+
+        // Idempotency: running again should not duplicate entries
+        ensure_tide_ignored(&temp_dir);
+        let gitignore_second = fs::read_to_string(temp_dir.join(".gitignore")).unwrap();
+        assert_eq!(gitignore, gitignore_second);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+}
+

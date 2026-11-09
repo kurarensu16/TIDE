@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
+PackageIdentifier: kurarensu16.tide
+PackageVersion: 0.1.0
+PackageName: TIDE
+Publisher: kurarensu16
+PublisherUrl: https://github.com/kurarensu16
+PublisherSupportUrl: https://github.com/kurarensu16/TIDE/issues
+Author: kurarensu16
+ShortDescription: Terminal Integrated Development Environment for parallel AI coding agents.
+Description: |
+  TIDE is a native, keyboard-first terminal workspace engineered for orchestrating multiple
+  coding-agent CLIs in parallel with OS-level process lifecycles and dedicated Git worktrees.
+Moniker: tide
+Tags:
+  - terminal
+  - ide
+  - developer-tools
+  - tui
+  - ai-agents
+  - rust
+PackageUrl: https://github.com/kurarensu16/TIDE
+License: MIT OR Apache-2.0
+LicenseUrl: https://github.com/kurarensu16/TIDE/blob/main/LICENSE
+ReleaseNotesUrl: https://github.com/kurarensu16/TIDE/releases/tag/v0.1.0
+Commands:
+  - tide
+Installers:
+  - Architecture: x64
+    InstallerType: zip
+    InstallerUrl: https://github.com/kurarensu16/TIDE/releases/download/v0.1.0/tide-v0.1.0-windows-x86_64.zip
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000 # Replace with output from SHA256SUMS.txt
+    NestedInstallerType: portable
+    NestedInstallerFiles:
+      - RelativeFilePath: tide.exe
+        PortableCommandAlias: tide
+ManifestType: singleton
+ManifestVersion: 1.6.0
+
