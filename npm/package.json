@@ -1,11 +1,13 @@
 {
-  "name": "tide-cli",
+  "name": "@kurarens/tide",
   "version": "0.1.0",
   "description": "Terminal Integrated Development Environment for parallel AI coding agents",
   "main": "bin/tide.js",
   "bin": {
-    "tide": "bin/tide.js",
-    "tide-cli": "bin/tide.js"
+    "tide": "bin/tide.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "bin/",
@@ -35,7 +37,6 @@
     "antigravity",
     "cli"
   ],
-  "author": "kurarensu16",
+  "author": "kurarens",
   "license": "MIT OR Apache-2.0"
 }
-

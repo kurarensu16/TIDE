@@ -95,12 +95,12 @@ curl -fsSL https://raw.githubusercontent.com/kurarensu16/TIDE/main/scripts/insta
 
 Run instantly without installing:
 ```bash
-npx tide-cli
+npx @kurarens/tide
 ```
 
 Or install globally across Windows, macOS, and Linux:
 ```bash
-npm install -g tide-cli
+npm install -g @kurarens/tide
 ```
 
 ---

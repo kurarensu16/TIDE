@@ -1,4 +1,4 @@
-# tide-cli
+# @kurarens/tide
 
 **Terminal Integrated Development Environment for parallel AI coding agents.**
 
@@ -10,15 +10,15 @@ This is the official npm wrapper distribution for [TIDE](https://github.com/kura
 
 ### Run Instantly via `npx` (No installation needed)
 ```bash
-npx tide-cli
+npx @kurarens/tide
 ```
 
 ### Install Globally via `npm`
 ```bash
-npm install -g tide-cli
+npm install -g @kurarens/tide
 ```
 
-Once installed globally, you can launch TIDE from any terminal using `tide` or `tide-cli`:
+Once installed globally, you can launch TIDE from any terminal using `tide`:
 ```bash
 # Open current working directory
 tide .
@@ -39,4 +39,3 @@ tide "C:\path\to\project"
 ## Documentation & Repository
 * Website & Docs: [https://kurarensu16.github.io/TIDE/](https://kurarensu16.github.io/TIDE/)
 * GitHub: [https://github.com/kurarensu16/TIDE](https://github.com/kurarensu16/TIDE)
-
